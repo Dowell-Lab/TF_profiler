@@ -20,9 +20,10 @@ if __name__ == "__main__":
     required = parser.add_argument_group('Required Arguments')
     optional = parser.add_argument_group('Optional Arguments')
     
+    optional.add_argument('-v', '--verbose',dest="verbose", type=str2bool, nargs='?', const=True, default=False, help = 'will generate verbose output file', metavar="True/False", required=False)
 #seq generation    Add in dinucleotide switch?
     required.add_argument('-g', '--genome', dest="genome", help = 'reference genome in fasta format. Genome index must be in the same directory (genome.fa.fai).', metavar="genome.fa")
-    required.add_argument('-a', '--annotation', dest="annotation", help = 'input bed file of bidirectionals or ATAC peaks', metavar="annotation.bed") ##Add in option to give multiple annotation files and use mumerge
+    required.add_argument('-a', '--annotation', dest="annotation", help = 'input bed file of bidirectionals or ATAC peaks, ends with .bed or .sorted.bed', metavar="annotation.bed") ##Add in option to give multiple annotation files and use mumerge
     required.add_argument('-o', '--outdir', dest="outdir", help = 'directory for output', metavar="/full/path/to/output")
     required.add_argument('-s', '--sample', dest="sample", help = 'name of the sample to be run (str)', metavar="name_of_sample")
 
@@ -33,12 +34,12 @@ if __name__ == "__main__":
     
 #fimo    
     required.add_argument('-m', '--motifs', dest="motifs", help = 'meme file for TFs', metavar="motif_database.meme")
-    optional.add_argument('-c', '--cutoff_fimo',dest="cutoff_fimo",type=float, default=0.000001, help = 'cutoff for motifs called by fimo. Default: 1e-6', metavar="float", required=False)
+    optional.add_argument('-t', '--threshold_fimo',dest="threshold_fimo",type=float, default=0.000001, help = 'threshold for motifs called by fimo. Default: 1e-6', metavar="float", required=False)
     optional.add_argument('-b', '--background_file', dest="background_file", help = 'background base composition of a given genome. This flag is HIGHLY recommended otherwise a uniform background distribution is assumed ie A/T/G/C = 25/25/25/25', metavar="background.csv", default=None, required=False)    
     optional.add_argument('-e', '--experimental_fimo', dest="experimental_fimo", type=str2bool, nargs='?', const=True, default=False, help = 'will run fimo over only the annotated regions from the experimental dataset. True will increase run time. Recommended if you are only looking at a single dataset. If False, provide destination of the pre-scanned genome using the "--pre_scan" flag or scan the whole genome. The -e, -x and -p flags are mutually exclusive. Default: False.', metavar="True/False", required=False)
-    optional.add_argument('-x', '--whole_genome_fimo', dest="whole_genome_fimo", type=str2bool, nargs='?', const=True, default=False, help = 'will run fimo over the full genome provided by the "--genome" flag to generate the directory that can be called by the "--pre_scan" flag. Given the same fimo cutoff, meme file, genome and background distribution this will not change. True will greatly increase run time. It is recommended to run this only once given the same fimo parameters as simulated and recall the data using the "--pre_scan" flag. The -e, -x and -p flags are mutually exclusive. Default: False.', metavar="True/False", required=False)
+    optional.add_argument('-x', '--whole_genome_fimo', dest="whole_genome_fimo", type=str2bool, nargs='?', const=True, default=False, help = 'will run fimo over the full genome provided by the "--genome" flag to generate the directory that can be called by the "--pre_scan" flag. Given the same fimo threshold, meme file, genome and background distribution this will not change. True will greatly increase run time. It is recommended to run this only once given the same fimo parameters as simulated and recall the data using the "--pre_scan" flag. The -e, -x and -p flags are mutually exclusive. Default: False.', metavar="True/False", required=False)
     optional.add_argument('-p', '--pre_scan', dest="pre_scan", default=None, help = 'directory containing pre-scanned motifs over the whole genome obtained using the same fimo parameters as the simulated dataset. The -e, -x and -p flags are mutually exclusive.', metavar="/full/path/to/pre-scanned/motifs", required=False)
-    optional.add_argument('-t', '--threads', type=int, dest='threads', metavar='int', help='number of CPUs for multiprocessing. Default=1', default=1, required=False)
+    optional.add_argument('-c', '--cpus', type=int, dest='cpus', metavar='int', help='number of CPUs for multiprocessing. Default=1', default=1, required=False)
 
     
 #add histogram bin size change for md heat map parameter
@@ -55,4 +56,4 @@ if __name__ == "__main__":
 #     if (args.whole_genome_fimo==True) and (args.pre_scan!=None):
 #         raise ValueError("The --whole_genome_fimo and --pre_scan arguments are mutually exclusive. Please provide only one of them.")
     
-main.run(args.outdir, args.annotation, args.genome, args.sample, args.motifs, args.background_file, args.pre_scan, args.sequence_num, args.window, args.chrom_num, args.cutoff_fimo, args.threads, args.seed, args.experimental_fimo, args.whole_genome_fimo)
+main.run(args.outdir, args.annotation, args.genome, args.sample, args.motifs, args.background_file, args.pre_scan, args.sequence_num, args.window, args.chrom_num, args.threshold_fimo, args.cpus, args.seed, args.experimental_fimo, args.whole_genome_fimo, args.verbose)
