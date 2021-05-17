@@ -11,15 +11,19 @@ import glob
 import pandas as pd
 
 ######################################### Sequence Generator Main #########################################
-def run_fimo_scanner(verbose, outdir, sample, cpus, motifs, 
+def run_fimo_scanner(outdir, sample, cpus, motifs, 
                      threshold_fimo, background_file, genome, 
-                     experimental_fimo, whole_genome_fimo):
+                     verbose, experimental_fimo, whole_genome_fimo):
+    if verbose == True: 
+        print("---------Calculating GC Content of Motifs from Motif Database (.meme file)----------")
+    motif_list = fimo_motif_names(verbose=verbose,motifs=motifs)
+    get_gc(verbose, outdir=outdir, sample=sample, motifs=motifs, motif_list=motif_list, alphabet=['A','C','G','T'])
+        
     if verbose == True: 
         print("---------FIMO Scan: Identifying Locations of Motif Hits in Simulated Genome----------")
         print('Initializing ' + str(cpus) + ' cpus to run FIMO scan.')
         print('Start time: %s' % str(datetime.datetime.now()))
         start_time = int(time.time())
-    motif_list = fimo_motif_names(verbose=verbose,motifs=motifs)
     fimo_dirs(verbose, outdir=outdir, seq_type='simulated')
     seq_type='simulated'
     pool = multiprocessing.Pool(cpus)
@@ -109,6 +113,41 @@ def fimo_motif_names(verbose, motifs):
     if verbose == True:
         print('There are ' + str(len(motif_list)) + " motifs in this meme file. " + str(first) + '...' + str(last))
     return motif_list
+
+def get_gc(verbose, outdir, sample, motifs, motif_list, alphabet=['A','C','G','T']):
+    '''
+    Obtain a pssm model from a meme formatted database file.
+    '''
+    gc_out={}
+    for motif in motif_list:
+        motif_hit = False
+        PSSM = []
+        with open(motifs,'r') as F:
+            for line in F:
+                if 'MOTIF' in line:
+                    if motif in line:
+                        motif_hit = True
+                    else:
+                        motif_hit = False
+                elif motif_hit and 'URL' not in line and 'letter-probability' not in line and line != '\n':
+                    acgt_probabilities = [float(x) for x in line.strip('\n').split()]
+                    total_prob = sum(acgt_probabilities)
+                    acgt_probabilities = [x/total_prob for x in acgt_probabilities] #Convert to probabilities
+                    PSSM.append(acgt_probabilities)
+
+            gc = 0
+            for base in PSSM:
+                gc += base[alphabet.index('C')]
+                gc += base[alphabet.index('G')]
+
+            gc = gc/float(len(PSSM))
+            if verbose == True:
+                print('Percent GC content for ' + motif + ' is ' + str(gc))
+        gc_out[motif] = motif,gc
+ 
+        df_gc_out = pd.DataFrame.from_dict(gc_out)
+        df_gc_out = df_gc_out.transpose()
+        df_gc_out.to_csv(outdir + "/generated_sequences/" + str(sample) + "_motif_gc_percentage.txt", header=None, index=False, sep='\t')
 
 def scanner(motif_list, inputs):
     verbose, outdir, sample, motifs, threshold_fimo, background_file, genome, seq_type = inputs
