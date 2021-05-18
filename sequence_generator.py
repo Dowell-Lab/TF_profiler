@@ -302,19 +302,25 @@ def base_composition_input(base_composition):
     with open(base_composition) as bc:
 
         ##remove the header line
+                ##remove the header line
         lines = bc.readlines()[1:]
         for i in range(len(lines)):
             pos_prob = []
             try:
-                for j in range(1,5):
-                    pos_prob.append(lines[i].strip('\n').split(',')[j])
-                    position_feq.append(pos_prob)
+                pos_prob.append(lines[i].strip('\n').split(',')[1])
+                pos_prob.append(lines[i].strip('\n').split(',')[2])
+                pos_prob.append(lines[i].strip('\n').split(',')[3])
+                pos_prob.append(lines[i].strip('\n').split(',')[4])
+                position_feq.append(pos_prob)
             except IndexError:
-                for j in range(1,5):
-                    pos_prob.append(lines[i].strip('\n').split('\t')[j])
-                    position_feq.append(pos_prob)                
+                
+                pos_prob.append(lines[i].strip('\n').split('\t')[1])
+                pos_prob.append(lines[i].strip('\n').split('\t')[2])
+                pos_prob.append(lines[i].strip('\n').split('\t')[3])
+                pos_prob.append(lines[i].strip('\n').split('\t')[4])
+                position_feq.append(pos_prob)
             else:
-                print('Check the input file. \n It should be tab or comma separated')
+                print("Check the input file. \n It should be tab or comma separated")
 
 
     return(position_feq)
@@ -341,7 +347,7 @@ def sequence_generator(verbose, bases, position_freq, sequence_num):
 
 def write_fasta(verbose, generated_sequences, sample, outdir, window, sequence_num, chrom_num):
     ''' writes sequences generated into fasta file format and outputs them in generated sequences'''
-    seq_per_chrom, seq_last_chrom = check_seq_structure(verbose, sequence_num=sequence_num, chrom_num=chrom_num, window=window)
+    seq_per_chrom, seq_last_chrom = define_seq_structure(verbose, sequence_num=sequence_num, chrom_num=chrom_num, window=window)
     
     file=[]
     for i in range(len(generated_sequences)):
@@ -405,8 +411,8 @@ def reformat_expt_fasta(verbose, outdir, sample, chrom_num, window):
     
     sequence_num = len(file)
     if verbose == True:
-        print('Checking the reformating of the experimental fasta...')
-    seq_per_chrom, seq_last_chrom = check_seq_structure(verbose, sequence_num=sequence_num, chrom_num=chrom_num, window=window) 
+        print('Verifying the reformating of the experimental fasta...')
+    seq_per_chrom, seq_last_chrom = define_seq_structure(verbose, sequence_num=sequence_num, chrom_num=chrom_num, window=window) 
     
     dd = {}
     for i in range(0,chrom_num-1):
@@ -422,7 +428,7 @@ def reformat_expt_fasta(verbose, outdir, sample, chrom_num, window):
 
 def generate_bed(verbose, outdir, sample, sequence_num, chrom_num, window, annotation, seq_type):
     '''generates bed files defining mu for the simulated and experimental 'genomes'
-    Calls annotation_creater and windower'''
+    Calls windower'''
     if seq_type == 'experimental': 
         #getting the sequence number
         annotation_file = pd.read_csv(annotation, header=None)
@@ -430,23 +436,10 @@ def generate_bed(verbose, outdir, sample, sequence_num, chrom_num, window, annot
     elif seq_type == 'simulated':
         sequence_num = sequence_num
     if verbose == True:
-        print('Checking the structure of the bed files...')
-    seq_per_chrom, seq_last_chrom = check_seq_structure(verbose, sequence_num, chrom_num, window)
-    #creating the locations for the all chromosomes except the last
-    dfbed=annotation_creater(seq_per_chrom=seq_per_chrom, chrom_num=chrom_num, window=window, seq_type=seq_type)
-    #creating the locations for the last chromosome
-    dflast=annotation_creater(seq_per_chrom=seq_last_chrom, chrom_num=chrom_num, window=window, seq_type=seq_type)
-    #combining the bed locations
-    df = pd.concat([dfbed, dflast])
-    df = df[['chr', 'start', 'stop']]
-    #saving the new annotation
-    df.to_csv(outdir + '/annotations/' + str(sample) + '_' + seq_type + '_centered.bed', header=None, index=False, sep='\t')
-    pull_bed= outdir + '/annotations/' + str(sample) + '_' + seq_type + '_centered.bed'
-    windower(bed=pull_bed, outdir=outdir, sample=sample, window=window, seq_type=seq_type)
-
-######################################### Functions Called by Other Functions #########################################    
-def annotation_creater(seq_per_chrom, chrom_num, window, seq_type):
-    '''Used by generate bed to define the number of sequences on each chromosome'''
+        print('Verifying the structure of the bed files...')
+    seq_per_chrom, seq_last_chrom = define_seq_structure(verbose, sequence_num, chrom_num, window)
+    
+    #creating the locations
     dbed = {}
     for i in range(0,(seq_per_chrom)):
         dbed['r_' + str(i)] = [int(window-1)+i*(2*window+21), int(window+1)+i*(2*window+21)]
@@ -455,8 +448,15 @@ def annotation_creater(seq_per_chrom, chrom_num, window, seq_type):
     dfbed.columns = ['start', 'stop']
     #duplicating the dataframe for all chromosomes except the last
     dfbed = pd.concat([dfbed]*(chrom_num-1))
-    #adding the chromosome name to the genomic location
 
+    #creating the locations - last chrom
+    dlast = {}
+    for i in range(0,(seq_last_chrom)):
+        dlast['z_' + str(i)] = [int(window-1)+i*(2*window+21), int(window+1)+i*(2*window+21)]
+    dflast = pd.DataFrame.from_dict(dlast, orient='index')
+    dflast.columns = ['start', 'stop']    
+
+    #adding the chromosome name to the genomic location
     if seq_type == 'experimental':
         l=[]
         for i in range(int(seq_per_chrom)):
@@ -471,8 +471,30 @@ def annotation_creater(seq_per_chrom, chrom_num, window, seq_type):
                 l.append(str('sim_' + str(c+1)))
         l = sorted(l)
         dfbed['chr'] = l
-    return dfbed
+    
+    #adding the chromosome name to the genomic location- last chrom
+    if seq_type == 'experimental':
+        l=[]
+        for i in range(int(seq_last_chrom)):
+            l.append(str('exp_' + str(chrom_num)))
+        l = sorted(l)
+        dflast['chr'] = l
+    elif seq_type == 'simulated':
+        l=[]
+        for i in range(int(seq_last_chrom)):
+            l.append(str('sim_' + str(chrom_num)))
+        l = sorted(l)
+        dflast['chr'] = l
+    
+    #combining the bed locations
+    df = pd.concat([dfbed, dflast])
+    df = df[['chr', 'start', 'stop']]
+    #saving the new annotation
+    df.to_csv(outdir + '/annotations/' + str(sample) + '_' + seq_type + '_centered.bed', header=None, index=False, sep='\t')
+    pull_bed= outdir + '/annotations/' + str(sample) + '_' + seq_type + '_centered.bed'
+    windower(bed=pull_bed, outdir=outdir, sample=sample, window=window, seq_type=seq_type)
 
+######################################### Functions Called by Other Functions #########################################    
 def windower(bed, outdir, sample, window, seq_type):
     '''this function windows bedfiles'''
     bed_df = pd.read_csv(bed, sep ='\t',header=None)
@@ -495,9 +517,8 @@ def windower(bed, outdir, sample, window, seq_type):
                     columns=['chr','start','stop'],
                     header = False, index = False)
 
-def check_seq_structure(verbose, sequence_num, chrom_num, window):
-    '''checks for edge cases ensuring that the generated 'genomes' and bed files
-    are properly structured'''
+def define_seq_structure(verbose, sequence_num, chrom_num, window):
+    '''defines chromosome structuring for generated 'genomes' and bed files'''
     seq_length = ((2*int(window))+21)
     tot_bases = int(sequence_num*seq_length)
     seq_per_chrom = math.floor(sequence_num/chrom_num)
@@ -512,29 +533,12 @@ def check_seq_structure(verbose, sequence_num, chrom_num, window):
 
     if verbose == True:
         print('Individual Sequence Length: ' + str(seq_length))
-        print('Number of Experimental Sequences: ' + str(sequence_num)) 
+        print('Number of Sequences: ' + str(sequence_num)) 
         print('Number of Chromosomes: ' + str(chrom_num) + '\n')
         print('Sequences per Chromosome: ' + str(seq_per_chrom))
-        print('Sequences on Last Chromosome: ' + str(seq_last_chrom))
-        if sequence_num-scount != 0:
-            print('Error! The total number of sequences does not equal the sum of the sequences divided into chromosomes!')
-            sys.exit(1)
-        else:
-            print('Number of sequences per chromosome are properly structured.\n')
+        print('Sequences on Last Chromosome: ' + str(seq_last_chrom) + '\n')
         print('Bases per Chromosome: ' + str(base_per_chrom))
         print('Bases on Last Chromosome: ' + str(base_last_chrom))
-        print('Total Bases in Experiment: ' + str(tot_bases))
-        if tot_bases-bscount != 0:
-            print('Error! The total number of bases does not equal the sum of the bases divided into chromosomes!')
-            sys.exit(1)
-        else:
-            print('Number of bases per chromosome are properly structured.\n')
-    else:
-        if sequence_num-scount != 0:
-            print('Error! The total number of sequences does not equal the sum of the sequences divided into chromosomes!')
-            sys.exit(1)
-        if tot_bases-bscount != 0:
-            print('Error! The total number of bases does not equal the sum of the bases divided into chromosomes!')
-            sys.exit(1)
+        print('Total Bases: ' + str(tot_bases))
         
     return seq_per_chrom, seq_last_chrom
