@@ -88,7 +88,7 @@ def window_annotation(verbose, annotation, outdir, sample, window):
         if verbose == True:
             print('Successfully created the directory %s' % outdir + '/annotations')
     os.system('rsync ' + annotation + ' ' + outdir + '/annotations/')        
-    windower(bed=annotation, outdir=outdir, sample=sample, window=int(window), seq_type='experimental')
+    windower(bed=annotation, outdir=outdir, sample=sample, window=int(window), seq_type='experimental', ident=False)
     
 def get_sequences(verbose, genome, outdir, sample):
     '''This function pulls the sequences out of the windowed annotation file and outputs them in 
@@ -489,17 +489,26 @@ def generate_bed(verbose, outdir, sample, sequence_num, chrom_num, window, annot
     #combining the bed locations
     df = pd.concat([dfbed, dflast])
     df = df[['chr', 'start', 'stop']]
+    df['count'] = (np.arange(len(df)))
+    df['count'] = (df['count']+1).apply(str)
+    df['region_name'] = df['chr'] + ';region_' + df['count']
+    df.drop(['count'], axis=1, inplace=True)
     #saving the new annotation
     df.to_csv(outdir + '/annotations/' + str(sample) + '_' + seq_type + '_centered.bed', header=None, index=False, sep='\t')
     pull_bed= outdir + '/annotations/' + str(sample) + '_' + seq_type + '_centered.bed'
-    windower(bed=pull_bed, outdir=outdir, sample=sample, window=window, seq_type=seq_type)
+    windower(bed=pull_bed, outdir=outdir, sample=sample, window=window, seq_type=seq_type, ident=True)
 
 ######################################### Functions Called by Other Functions #########################################    
-def windower(bed, outdir, sample, window, seq_type):
+def windower(bed, outdir, sample, window, seq_type, ident):
     '''this function windows bedfiles'''
     bed_df = pd.read_csv(bed, sep ='\t',header=None)
-    bed_df = bed_df.loc[:, 0:2]
-    bed_df.columns = ['chr', 'start', 'stop']
+    if ident == True:
+        bed_df = bed_df.loc[:, 0:3]
+        bed_df.columns = ['chr', 'start', 'stop', 'region_name']    
+    elif ident==False:
+        bed_df = bed_df.loc[:, 0:2]
+        bed_df.columns = ['chr', 'start', 'stop']
+        
 
     ##redefine mu to get new start and stop coordinates
     bed_df['start_new'] = bed_df.apply(lambda x: round((x['start'] + x['stop'])/2), axis=1)
@@ -513,7 +522,12 @@ def windower(bed, outdir, sample, window, seq_type):
     bed_df['stop'] = bed_df.apply(lambda x: x['stop_new'] + int(window), axis=1)
 
     ##saving the new annotation
-    bed_df.to_csv(outdir + '/annotations/' + sample + '_' + seq_type + '_window.bed', sep='\t',
+    if ident == True:
+        bed_df.to_csv(outdir + '/annotations/' + sample + '_' + seq_type + '_window.bed', sep='\t',
+                columns=['chr','start','stop', 'region_name'],
+                header = False, index = False)
+    elif ident == False:
+        bed_df.to_csv(outdir + '/annotations/' + sample + '_' + seq_type + '_window.bed', sep='\t',
                     columns=['chr','start','stop'],
                     header = False, index = False)
 

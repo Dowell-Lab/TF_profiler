@@ -9,6 +9,7 @@ from functools import partial
 import multiprocessing
 import glob
 import pandas as pd
+import numpy as np
 
 ######################################### Sequence Generator Main #########################################
 def run_fimo_scanner(outdir, sample, cpus, motifs, 
@@ -36,7 +37,7 @@ def run_fimo_scanner(outdir, sample, cpus, motifs,
         print("----------------Convert Simulated FIMO to Bed Format-----------------------")
     fimotobed(verbose, outdir, seq_type='simulated')
     if verbose == True: 
-        print("Bed file columns: ['sequence_name','start', 'stop', 'motif_id','score', 'strand','identifier']")
+        print("Bed file columns: ['chr','start', 'stop', 'motif_id','score', 'strand','identifier', 'motif_region_name']")
 
     if experimental_fimo == True:
         if verbose == True: 
@@ -181,8 +182,11 @@ def fimotobed(verbose, outdir, seq_type):
             else:
                 df = df.sort_values('sequence_name').reset_index()
                 df['identifier'] = df.apply(lambda row: identifier(row), axis=1)
-
-                df = df[['sequence_name','start', 'stop', 'motif_id','score', 'strand','identifier']]
+                df['count'] = (np.arange(len(df)))
+                df['count'] = (df['count']+1).apply(str)
+                df['motif_region_name'] = df['sequence_name'] + ';motif_' + df['count']
+                df.drop(['count'], axis=1, inplace=True)
+                df = df[['sequence_name','start', 'stop', 'motif_id','score', 'strand','identifier', 'motif_region_name']]
                 df['start'] = df['start'].astype(int) 
                 df['stop'] = df['stop'].astype(int)                 
                 df.to_csv(outdir + '/motifs/' + seq_type + '/' + motif_name + '.sorted.bed', sep='\t', header=None, index=False)
