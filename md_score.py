@@ -12,41 +12,39 @@ import warnings
 from pandas.core.common import SettingWithCopyWarning
 warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 ######################################### MD Score Main #########################################
-def run_md_score(verbose, outdir, sample, window):
+def run_md_score(verbose, outdir, sample, window, cpus):
     if verbose == True: 
         print('--------------Beginning MD-Score Calculation---------------')
-#         print('Initializing ' + str(cpus) + ' threads to calculate MD Scores.')
+        print('Initializing ' + str(cpus) + ' threads to calculate MD Scores.')
         start_time = int(time.time())
         print('Start time: %s' % str(datetime.datetime.now()))
-    md_dirs(verbose, outdir=outdir, seq_type='experimental')
+    md_dirs(verbose, outdir=outdir, seq_type='simulated')
     
     if verbose==True:
         print('--------------Normalizing Motif Quality Scores---------------')
     ##func to read in each motif file present in a dir
-    motif_file = '/Users/tajo5912/rbg/dolphin/motifs/experimental/TP53_M06704_1.sorted.bed'
+    motif_file = outdir + '/motifs/simulated/TP53_M06704_1.sorted.bed'
     motif_df = calculate_motif_quality_score(motif_file=motif_file)
     
     if verbose == True:
         print("---------Calculating Motif Distance Scores----------")
-    annotation_file = '/Users/tajo5912/rbg/dolphin/annotations/dolphin_experimental_window.bed'
+    annotation_file = outdir + '/annotations/' + sample + '_simulated_window.bed'
     motif_score_df = get_distances(verbose=verbose, motif_df=motif_df, 
                                   annotation_file=annotation_file)
     motif_score_df = calculate_motif_distance_score(verbose=verbose, outdir=outdir, sample=sample,
                                                     motif_score_df=motif_score_df, 
-                                                    window=window, distance_weight=0.1,seq_type='experimental')
+                                                    window=window, distance_weight=0.1,seq_type='simulated')
     
     if verbose == True:
         print("---------Calculating Region Score----------")
     region_score_df = calculate_region_score(verbose=verbose, outdir=outdir, sample=sample, 
-                                             motif_score_df=motif_score_df,seq_type='experimental')
+                                             motif_score_df=motif_score_df,seq_type='simulated')
     
     if verbose == True:
         print("---------MD-Score Calculation Complete----------")
         stop_time = int(time.time())
         print('Stop time: %s' % str(datetime.datetime.now()))
         print('Total Run time :', (stop_time-start_time)/60, ' minutes')
-
-
 
 
 ######################################### MD Score Functions #########################################
@@ -153,11 +151,11 @@ def calculate_motif_distance_score(verbose, outdir, sample, motif_score_df, wind
     small_window = window*0.1
     exponent = math.log(distance_weight, small_window)
     motif_score_df['normalized_distance_score'] = (abs(motif_score_df['distance']))**exponent
+    motif_score_df['motif_hit_score'] = (0.2*motif_score_df['normalized_quality_score'] + 0.8*motif_score_df['normalized_distance_score'])*(1/motif_score_df['region_hit_frequency'])
     motif_score_df.to_csv(outdir + '/temp/' + seq_type + '_motif_scores/' + sample + '_tp53.txt', sep='\t', index=False)
     return motif_score_df
 
 def calculate_region_score(verbose, outdir, sample, motif_score_df, seq_type): 
-    motif_score_df['motif_hit_score'] = (0.8*motif_score_df['normalized_quality_score'] + 0.2*motif_score_df['normalized_distance_score'])*(1/motif_score_df['region_hit_frequency'])
     region_score_df = motif_score_df[['region_name', 'motif_hit_score']]
     region_score_df = region_score_df.groupby('region_name').sum().reset_index()
     region_score_df.columns = ['region_name', 'region_score']
