@@ -55,6 +55,8 @@ def run_md_score(verbose, outdir, sample, window, cpus):
         stop_time = int(time.time())
         print('Stop time: %s' % str(datetime.datetime.now()))
         print('Total Run time :', (stop_time-start_time)/60, ' minutes')
+        print('---------Compiling MD-scores---------')  
+    pull_scores(verbose=verbose, outdir=outdir, seq_type='simulated', tf_list=tf_list, sample=sample)
       
     if verbose == True: 
         print('--------------Beginning MD-Score Calculation- Experimental---------------')
@@ -93,6 +95,8 @@ def run_md_score(verbose, outdir, sample, window, cpus):
         stop_time = int(time.time())
         print('Stop time: %s' % str(datetime.datetime.now()))
         print('Total Run time :', (stop_time-start_time)/60, ' minutes')
+        print('---------Compiling MD-scores---------')
+    pull_scores(verbose=verbose, outdir=outdir, seq_type='experimental', tf_list=tf_list, sample=sample)
             
 ######################################### MD Score Functions #########################################
 
@@ -225,4 +229,24 @@ def calculate_motif_distance_score(verbose, outdir, sample, motif_distance_df, w
         motif_distance_df.to_csv(outdir + '/temp/' + seq_type + '_motif_scores/' + sample + '_' + tf + '.txt', sep='\t', index=False)
         if verbose ==  True:
             print('Successfully calculated distance scores for ' + tf + '.')
-    
+           
+def pull_scores(verbose, outdir, seq_type, tf_list, sample):
+    if (path.exists(outdir + '/results') == False):
+        os.system('mkdir -p ' + outdir + '/results') 
+    dd = {}
+    if verbose == True:
+        print('Reading scores for...')
+    for tf in tf_list:
+        if verbose == True:
+            print(tf)
+        df = pd.read_csv(outdir + '/temp/' + seq_type + '_motif_scores/' + sample + '_' + tf + '.txt', 
+                         sep='\t')
+        total_distance_score = float(df[['distance_score']].sum())
+        motif_id = list(df[['motif_id']].loc[0])
+        motif_id = str(motif_id[0])
+        dd[motif_id] = total_distance_score
+        out = pd.DataFrame.from_dict(dd, orient='index').reset_index()
+        out.to_csv(outdir + '/results/' + sample + '_' + seq_type + '_md_scores.txt', 
+                   sep="\t", header=['motif_id', 'total_distance_score'], index=False)
+    if verbose == True:
+        print('Generation of '+ seq_type + '_md_scores.txt is complete.')        
