@@ -244,10 +244,10 @@ def pull_scores(verbose, outdir, seq_type, tf_list, sample):
         total_distance_score = float(df[['distance_score']].sum())
         motif_id = list(df[['motif_id']].loc[0])
         motif_id = str(motif_id[0])
-        motif_hit_occurences = int(len(df))
-        dd[motif_id] = total_distance_score, motif_hit_occurences
+        motif_hit_occurrences = int(len(df))
+        dd[motif_id] = total_distance_score, motif_hit_occurrences
         out = pd.DataFrame.from_dict(dd, orient='index').reset_index()
         out.to_csv(outdir + '/results/' + sample + '_' + seq_type + '_md_scores.txt', 
-                   sep="\t", header=['motif_id', 'total_distance_score', 'motif_hit_occurences'], index=False)
+                   sep="\t", header=['motif_id', 'total_distance_score', 'motif_hit_occurrences'], index=False)
     if verbose == True:
         print('Generation of '+ seq_type + '_md_scores.txt is complete.')
