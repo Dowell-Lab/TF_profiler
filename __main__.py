@@ -21,13 +21,14 @@ if __name__ == "__main__":
     optional = parser.add_argument_group('Optional Arguments')
     
     optional.add_argument('-v', '--verbose',dest="verbose", type=str2bool, nargs='?', const=True, default=False, help = 'will generate verbose output file', metavar="True/False", required=False)
+
 #seq generation    Add in dinucleotide switch?
     required.add_argument('-g', '--genome', dest="genome", help = 'reference genome in fasta format. Genome index must be in the same directory (genome.fa.fai).', metavar="genome.fa")
     required.add_argument('-a', '--annotation', dest="annotation", help = 'input bed file of bidirectionals or ATAC peaks, ends with .bed or .sorted.bed', metavar="annotation.bed") ##Add in option to give multiple annotation files and use mumerge
     required.add_argument('-o', '--outdir', dest="outdir", help = 'directory for output', metavar="/full/path/to/output")
     required.add_argument('-s', '--sample', dest="sample", help = 'name of the sample to be run (str)', metavar="name_of_sample")
 
-    optional.add_argument('-d', '--seed',dest="seed",type=int, default=True, help = 'seed for initializing the random number generator. To set a specific seed -s int. The dafault is "True" so the seed is based on the clock. If "0" a random seed will be selected.', metavar="int", required=False)
+    optional.add_argument('-d', '--seed',dest="seed",type=int, default=True, help = 'seed for initializing the random number generator. To set a specific seed -d int. The dafault is "True" so the seed is based on the clock. If "0" a random seed will be selected.', metavar="int", required=False)
     optional.add_argument('-w', '--window', dest="window",type=int, default=1500, help = 'window to extract sequences (Default=1500)', metavar="int", required=False)
     optional.add_argument('-n', '--sequence_num', dest="sequence_num",type=int, default=20000, help = 'number of simulated sequences to be generated. For best results, set equal to number of peaks called in the annotation file provided', metavar="int", required=False) #change default to be equal to the number of experimental sequences (ie len annotation)
     optional.add_argument('-i', '--chrom_num', dest="chrom_num",type=int, default=10, help = 'number of simulated chromosomes. It is ideal to have approximately ~15 million bases per chromosome', metavar="int", required=False) #change default to hit this 15mill approximation
@@ -41,7 +42,9 @@ if __name__ == "__main__":
     optional.add_argument('-p', '--pre_scan', dest="pre_scan", default=None, help = 'directory containing pre-scanned motifs over the whole genome obtained using the same fimo parameters as the simulated dataset. The -e, -x and -p flags are mutually exclusive.', metavar="/full/path/to/pre-scanned/motifs", required=False)
     optional.add_argument('-c', '--cpus', type=int, dest='cpus', metavar='int', help='number of CPUs for multiprocessing. Default=1', default=1, required=False)
 
-    
+#scoring options    
+    optional.add_argument('-k', '--dastk', dest="dastk", type=str2bool, nargs='?', const=True, default=False, help = 'will run dastk scoring as well as new scoring method. Default: False.', metavar="True/False", required=False)
+        
 #add histogram bin size change for md heat map parameter
 
     args = parser.parse_args()
@@ -56,4 +59,4 @@ if __name__ == "__main__":
 #     if (args.whole_genome_fimo==True) and (args.pre_scan!=None):
 #         raise ValueError("The --whole_genome_fimo and --pre_scan arguments are mutually exclusive. Please provide only one of them.")
     
-main.run(args.outdir, args.annotation, args.genome, args.sample, args.motifs, args.background_file, args.pre_scan, args.sequence_num, args.window, args.chrom_num, args.threshold_fimo, args.cpus, args.seed, args.experimental_fimo, args.whole_genome_fimo, args.verbose)
+main.run(args.outdir, args.annotation, args.genome, args.sample, args.motifs, args.background_file, args.pre_scan, args.sequence_num, args.window, args.chrom_num, args.threshold_fimo, args.cpus, args.seed, args.experimental_fimo, args.whole_genome_fimo, args.dastk, args.verbose)

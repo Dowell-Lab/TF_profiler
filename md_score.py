@@ -17,9 +17,9 @@ warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 
 ######################################### MD Score Main #########################################
 
-def run_md_score(verbose, outdir, sample, window, cpus):
+def run_md_score(verbose, outdir, sample, window, motifs, cpus, experimental_fimo):
     if verbose == True: 
-        print('--------------Beginning MD-Score Calculation- Simulated---------------')
+        print('---------Calculating the MD Scores for the Simulated Genome----------')
         print('Initializing ' + str(cpus) + ' threads to calculate MD Scores.')
         start_time = int(time.time())
         print('Start time: %s' % str(datetime.datetime.now()))
@@ -29,7 +29,7 @@ def run_md_score(verbose, outdir, sample, window, cpus):
         print('--------------Pulling in Annotation and Getting List of Motifs---------------')
     annotation_df = read_annotation(verbose=verbose, sample=sample, 
                                         outdir=outdir, seq_type='simulated')
-    tf_list = get_tfs(verbose=verbose, outdir=outdir, seq_type='simulated') 
+    tf_list = get_tfs(verbose=verbose, motifs=motifs) 
     
     for tf in tf_list:
         if verbose == True:
@@ -51,53 +51,52 @@ def run_md_score(verbose, outdir, sample, window, cpus):
                                                         window=window, distance_weight=0.1,tf=tf, seq_type='simulated')
 
     if verbose == True:
-        print("---------Simulated MD-Score Calculation Complete----------")
+        print("---------MD Score Calculation for the Simulated Genome Complete----------")
         stop_time = int(time.time())
         print('Stop time: %s' % str(datetime.datetime.now()))
         print('Total Run time :', (stop_time-start_time)/60, ' minutes')
         print('---------Compiling MD-scores---------')  
     pull_scores(verbose=verbose, outdir=outdir, seq_type='simulated', tf_list=tf_list, sample=sample)
-      
-    if verbose == True: 
-        print('--------------Beginning MD-Score Calculation- Experimental---------------')
-        print('Initializing ' + str(cpus) + ' threads to calculate MD Scores.')
-        start_time = int(time.time())
-        print('Start time: %s' % str(datetime.datetime.now()))
-    md_dirs(verbose, outdir=outdir, seq_type='experimental')
     
-    if verbose==True:
-        print('--------------Pulling in Annotation and Getting List of Motifs---------------')
-    annotation_df = read_annotation(verbose=verbose, sample=sample, 
-                                        outdir=outdir, seq_type='experimental')
-    tf_list = get_tfs(verbose=verbose, outdir=outdir, seq_type='experimental') 
-    
-    for tf in tf_list:
-        if verbose == True:
-            print('Processing ' + tf + '.')
-        motif_df = read_motif(verbose=verbose, outdir=outdir, seq_type='experimental', tf=tf)
-        
-        if verbose == True:
-            print("---------Pulling Chromosomes From Annotation File and Motif File----------") 
-        chrs = get_chrs(verbose=verbose, motif_df=motif_df, annotation_df=annotation_df, tf=tf)
-        if verbose == True:
-            print("---------Calculating Motif Distance Scores----------")
-        pool = multiprocessing.Pool(cpus)
-        motif_distance_dfs = pool.map(partial(get_distances, 
-                               inputs=[verbose, motif_df, annotation_df]), chrs)
-        motif_distance_df = pd.concat(motif_distance_dfs, axis=0)
+    if experimental_fimo == True:
+        if verbose == True: 
+            print('---------Calculating the MD Scores for the Experimental Genome----------')
+            print('Initializing ' + str(cpus) + ' threads to calculate MD Scores.')
+            start_time = int(time.time())
+            print('Start time: %s' % str(datetime.datetime.now()))
+        md_dirs(verbose, outdir=outdir, seq_type='experimental')
 
-        motif_score_df = calculate_motif_distance_score(verbose=verbose, outdir=outdir, sample=sample,
-                                                        motif_distance_df=motif_distance_df, 
-                                                        window=window, distance_weight=0.1,tf=tf, seq_type='experimental')
+        if verbose==True:
+            print('--------------Pulling in Annotation and Getting List of Motifs---------------')
+        annotation_df = read_annotation(verbose=verbose, sample=sample, 
+                                            outdir=outdir, seq_type='experimental')
+        for tf in tf_list:
+            if verbose == True:
+                print('Processing ' + tf + '.')
+            motif_df = read_motif(verbose=verbose, outdir=outdir, seq_type='experimental', tf=tf)
 
-    if verbose == True:
-        print("---------Experimental MD-Score Calculation Complete----------")
-        stop_time = int(time.time())
-        print('Stop time: %s' % str(datetime.datetime.now()))
-        print('Total Run time :', (stop_time-start_time)/60, ' minutes')
-        print('---------Compiling MD-scores---------')
-    pull_scores(verbose=verbose, outdir=outdir, seq_type='experimental', tf_list=tf_list, sample=sample)
-            
+            if verbose == True:
+                print("---------Pulling Chromosomes From Annotation File and Motif File----------") 
+            chrs = get_chrs(verbose=verbose, motif_df=motif_df, annotation_df=annotation_df, tf=tf)
+            if verbose == True:
+                print("---------Calculating Motif Distance Scores----------")
+            pool = multiprocessing.Pool(cpus)
+            motif_distance_dfs = pool.map(partial(get_distances, 
+                                   inputs=[verbose, motif_df, annotation_df]), chrs)
+            motif_distance_df = pd.concat(motif_distance_dfs, axis=0)
+
+            motif_score_df = calculate_motif_distance_score(verbose=verbose, outdir=outdir, sample=sample,
+                                                            motif_distance_df=motif_distance_df, 
+                                                            window=window, distance_weight=0.1,tf=tf, seq_type='experimental')
+
+        if verbose == True:
+            print("---------MD Score Calculation for the Experimental Genome Complete----------")
+            stop_time = int(time.time())
+            print('Stop time: %s' % str(datetime.datetime.now()))
+            print('Total Run time :', (stop_time-start_time)/60, ' minutes')
+            print('---------Compiling MD-scores---------')
+        pull_scores(verbose=verbose, outdir=outdir, seq_type='experimental', tf_list=tf_list, sample=sample)
+
 ######################################### MD Score Functions #########################################
 
 def md_dirs(verbose, outdir, seq_type):
@@ -112,19 +111,19 @@ def md_dirs(verbose, outdir, seq_type):
         if verbose == True:
             print('Successfully created the directory %s' % outdir + '/temp/' + seq_type + '_motif_scores')
 
-def get_tfs(verbose, outdir, seq_type):
+def get_tfs(verbose, motifs):
     tf_list = []
-    motif_directory = os.fsencode(outdir + '/motifs/' + seq_type)
-    for motif in os.listdir(motif_directory):
-        if motif.endswith(b'.bed'):
-            motif = motif.decode('utf-8')
-            motif=motif.split('/')[-1].split('.')[-3]
-            tf_list.append(motif)
-        else:
-            continue
-    if verbose==True:
-        print('There are ' + str(len(tf_list)) + ' motifs in the ' + seq_type + ' motif directory.')
-    return tf_list
+    with open(motifs) as F:
+        for line in F:
+            if 'MOTIF' in line:
+                line = line.strip('\n').split()
+                motif_name = line[-1]
+                tf_list.append(motif_name)
+    first = [tf_list[0:1]]
+    last =  [tf_list[-1:]]
+    if verbose == True:
+        print('There are ' + str(len(tf_list)) + " motifs in this meme file. " + str(first) + '...' + str(last))
+    return tf_list 
 
 def read_motif(verbose, outdir, seq_type, tf):
     if verbose == True:
