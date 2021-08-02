@@ -5,6 +5,7 @@ import multiprocessing
 import pandas as pd
 import math
 import numpy as np
+import glob
 from matplotlib import pyplot as plt
 from matplotlib import cm
 import time
@@ -14,12 +15,11 @@ from os import path
 import warnings
 from pandas.core.common import SettingWithCopyWarning
 warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
-
 ######################################### MD Score Main #########################################
 
-def run_md_score(verbose, outdir, sample, window, motifs, cpus, experimental_fimo):
+def run_md_score(verbose, outdir, sample, window, cpus, experimental_fimo):
     if verbose == True: 
-        print('---------Calculating the MD Scores for the Simulated Genome----------')
+        print('--------------Beginning MD-Score Calculation- Simulated---------------')
         print('Initializing ' + str(cpus) + ' threads to calculate MD Scores.')
         start_time = int(time.time())
         print('Start time: %s' % str(datetime.datetime.now()))
@@ -29,7 +29,7 @@ def run_md_score(verbose, outdir, sample, window, motifs, cpus, experimental_fim
         print('--------------Pulling in Annotation and Getting List of Motifs---------------')
     annotation_df = read_annotation(verbose=verbose, sample=sample, 
                                         outdir=outdir, seq_type='simulated')
-    tf_list = get_tfs(verbose=verbose, motifs=motifs) 
+    tf_list = get_scanned_tfs(verbose=verbose, outdir=outdir, sample=sample, seq_type='simulated') 
     
     for tf in tf_list:
         if verbose == True:
@@ -43,7 +43,9 @@ def run_md_score(verbose, outdir, sample, window, motifs, cpus, experimental_fim
             print("---------Calculating Motif Distance Scores----------")
         pool = multiprocessing.Pool(cpus)
         motif_distance_dfs = pool.map(partial(get_distances, 
-                               inputs=[verbose, motif_df, annotation_df]), chrs)
+                               inputs=[verbose, motif_df, annotation_df, window, tf]), chrs)
+        pool.close()
+        pool.join()
         motif_distance_df = pd.concat(motif_distance_dfs, axis=0)
 
         motif_score_df = calculate_motif_distance_score(verbose=verbose, outdir=outdir, sample=sample,
@@ -51,16 +53,16 @@ def run_md_score(verbose, outdir, sample, window, motifs, cpus, experimental_fim
                                                         window=window, distance_weight=0.1,tf=tf, seq_type='simulated')
 
     if verbose == True:
-        print("---------MD Score Calculation for the Simulated Genome Complete----------")
+        print("---------Simulated MD-Score Calculation Complete----------")
         stop_time = int(time.time())
         print('Stop time: %s' % str(datetime.datetime.now()))
         print('Total Run time :', (stop_time-start_time)/60, ' minutes')
         print('---------Compiling MD-scores---------')  
     pull_scores(verbose=verbose, outdir=outdir, seq_type='simulated', tf_list=tf_list, sample=sample)
     
-    if experimental_fimo == True:
+    if experimental_fimo == True:  
         if verbose == True: 
-            print('---------Calculating the MD Scores for the Experimental Genome----------')
+            print('--------------Beginning MD-Score Calculation- Experimental---------------')
             print('Initializing ' + str(cpus) + ' threads to calculate MD Scores.')
             start_time = int(time.time())
             print('Start time: %s' % str(datetime.datetime.now()))
@@ -70,6 +72,8 @@ def run_md_score(verbose, outdir, sample, window, motifs, cpus, experimental_fim
             print('--------------Pulling in Annotation and Getting List of Motifs---------------')
         annotation_df = read_annotation(verbose=verbose, sample=sample, 
                                             outdir=outdir, seq_type='experimental')
+        tf_list = get_scanned_tfs(verbose=verbose, outdir=outdir, sample=sample, seq_type='experimental') 
+
         for tf in tf_list:
             if verbose == True:
                 print('Processing ' + tf + '.')
@@ -82,7 +86,9 @@ def run_md_score(verbose, outdir, sample, window, motifs, cpus, experimental_fim
                 print("---------Calculating Motif Distance Scores----------")
             pool = multiprocessing.Pool(cpus)
             motif_distance_dfs = pool.map(partial(get_distances, 
-                                   inputs=[verbose, motif_df, annotation_df]), chrs)
+                                   inputs=[verbose, motif_df, annotation_df, window, tf]), chrs)
+            pool.close()
+            pool.join()
             motif_distance_df = pd.concat(motif_distance_dfs, axis=0)
 
             motif_score_df = calculate_motif_distance_score(verbose=verbose, outdir=outdir, sample=sample,
@@ -90,15 +96,14 @@ def run_md_score(verbose, outdir, sample, window, motifs, cpus, experimental_fim
                                                             window=window, distance_weight=0.1,tf=tf, seq_type='experimental')
 
         if verbose == True:
-            print("---------MD Score Calculation for the Experimental Genome Complete----------")
+            print("---------experimental MD-Score Calculation Complete----------")
             stop_time = int(time.time())
             print('Stop time: %s' % str(datetime.datetime.now()))
             print('Total Run time :', (stop_time-start_time)/60, ' minutes')
-            print('---------Compiling MD-scores---------')
+            print('---------Compiling MD-scores---------')  
         pull_scores(verbose=verbose, outdir=outdir, seq_type='experimental', tf_list=tf_list, sample=sample)
 
 ######################################### MD Score Functions #########################################
-
 def md_dirs(verbose, outdir, seq_type):
     if (path.exists(outdir + '/temp') == False):
         os.system('mkdir -p ' + outdir + '/temp') 
@@ -110,20 +115,23 @@ def md_dirs(verbose, outdir, seq_type):
     else:
         if verbose == True:
             print('Successfully created the directory %s' % outdir + '/temp/' + seq_type + '_motif_scores')
-
-def get_tfs(verbose, motifs):
+            
+def get_scanned_tfs(verbose, outdir, sample, seq_type):
     tf_list = []
-    with open(motifs) as F:
-        for line in F:
-            if 'MOTIF' in line:
-                line = line.strip('\n').split()
-                motif_name = line[-1]
-                tf_list.append(motif_name)
+    tf_motif_path = outdir + '/motifs/' + seq_type + '/*'
+    motif_filenames = glob.glob(tf_motif_path)
+    motif_count = len(motif_filenames)
+    if verbose == True:
+        print("Processing %s motif files in %s" % (motif_count, tf_motif_path))
+    for filename in motif_filenames:
+        filename_no_path = filename.split('/')[-1]
+        filename_no_path=filename_no_path.replace('.sorted.bed','')
+        tf_list.append(filename_no_path)
     first = [tf_list[0:1]]
     last =  [tf_list[-1:]]
     if verbose == True:
-        print('There are ' + str(len(tf_list)) + " motifs in this meme file. " + str(first) + '...' + str(last))
-    return tf_list 
+        print('There are ' + str(len(tf_list)) + " motifs with hits in this dataset. " + str(first) + '...' + str(last))
+    return tf_list
 
 def read_motif(verbose, outdir, seq_type, tf):
     if verbose == True:
@@ -160,14 +168,18 @@ def get_chrs(verbose, motif_df, annotation_df, tf):
         motif_not_annotation = mtf.difference(ann)
         annotation_not_motif = ann.difference(mtf)
         if len(motif_not_annotation) != 0:
-            print(motif_not_annotation + ' chromosomes are unique to the motif file')
+            print(str(motif_not_annotation) + ' chromosomes are unique to the motif file')
         if len(annotation_not_motif) != 0:
-            print(annotation_not_motif + ' chromosomes are unique to the annotation file')
+            print(str(annotation_not_motif) + ' chromosomes are unique to the annotation file')
         else:
             print('The chromosomes match between the motif and annotation files.')
     return chrs
 
-def findbedregions(row, single_chr_annotation):
+def laplacian_identifier(row):
+    ident= str(row['chr']) + ':' + str(row['stop'] + 1) + ';' + str(row['motif_id']) + '_laplacian_prior'
+    return ident
+
+def find_bed_regions(row, single_chr_annotation):
     center = row['center']
     hits_df = single_chr_annotation[single_chr_annotation['start'] < center]
     hits_df = hits_df[hits_df['stop'] > center]
@@ -175,33 +187,53 @@ def findbedregions(row, single_chr_annotation):
     region_name = list(hits_df['region_name'])
     return [distance[0], region_name[0]]
 
+
 def get_distances(chrs, inputs):
-    verbose, motif_df, annotation_df = inputs
+    verbose, motif_df, annotation_df, window, tf = inputs
     if verbose == True:
-        print('Calculating distances for chromosome ' + chrs + '.') 
-    distances =[]
-    single_chr_motif = motif_df[motif_df['chr'] == chrs]
-    if verbose == True:
-        before_drop = (len(single_chr_motif))
-    single_chr_motif = single_chr_motif.sort_values(by='score', ascending=False)
-    single_chr_motif = single_chr_motif.drop_duplicates(subset=['center'], keep='first')
-    if verbose == True:
-        after_drop = (len(single_chr_motif))
-        dropped = before_drop - after_drop
-        if dropped != 0:
-            print(str(dropped) + ' hits were dropped on chromosome ' + chrs + ' due to duplicate hits.\n')  
-        else:
-            print('No hits were dropped on chromosome ' + chrs + '.\n') 
-    single_chr_annotation = annotation_df[annotation_df['chr'] == chrs]
+        print('Calculating ' + tf + ' distances for chromosome ' + chrs + '.') 
+    
+    #selecting a single chromosome for the annotation
+    single_chr_annotation = annotation_df[annotation_df['chr'] == chrs]    
+    
+    #setting the laplacian prior
+    laplacian_prior_df = single_chr_annotation
+    laplacian_prior_df['motif_id'] = tf
+    laplacian_prior_df['identifier'] = laplacian_prior_df.apply(lambda row: laplacian_identifier(row), axis=1)
+    laplacian_prior_df['distance'] = window*2
+    laplacian_prior_df = laplacian_prior_df[['motif_id', 'identifier', 'distance', 'region_name']]
+    
 
-    single_chr_motif['dis_rn'] = single_chr_motif.apply(lambda row: findbedregions(row, single_chr_annotation), axis=1)
-    single_chr_motif_distances = single_chr_motif[['dis_rn']]
-    distances.append(single_chr_motif_distances)
+    if chrs in motif_df.values:
+        single_chr_motif = motif_df[motif_df['chr'] == chrs]
+        if verbose == True:
+            before_drop = (len(single_chr_motif))
+        single_chr_motif = single_chr_motif.sort_values(by='score', ascending=False)
+        single_chr_motif = single_chr_motif.drop_duplicates(subset=['center'], keep='first')
+        if verbose == True:
+            after_drop = (len(single_chr_motif))
+            dropped = before_drop - after_drop
+            if dropped != 0:
+                print(str(dropped) + ' hits were dropped on chromosome ' + chrs + ' due to duplicate hits.\n')  
+            else:
+                print('No hits were dropped on chromosome ' + chrs + '.\n')
+    
+        distances =[]
+        single_chr_motif['dis_rn'] = single_chr_motif.apply(lambda row: find_bed_regions(row, single_chr_annotation), axis=1)
+        single_chr_motif_distances = single_chr_motif[['dis_rn']]
+        distances.append(single_chr_motif_distances)
 
-    distance_df = pd.concat(distances, ignore_index=False)
-    motif_distance_df = motif_df.merge(distance_df, left_index=True, right_index=True)
-    motif_distance_df[['distance','region_name']] = pd.DataFrame(motif_distance_df.dis_rn.tolist(), index= motif_distance_df.index)
-    motif_distance_df = motif_distance_df.drop(['dis_rn'], axis=1)
+        distance_df = pd.concat(distances, ignore_index=False)
+        motif_distance_df = motif_df.merge(distance_df, left_index=True, right_index=True)
+        motif_distance_df[['distance','region_name']] = pd.DataFrame(motif_distance_df.dis_rn.tolist(), index= motif_distance_df.index)
+        motif_distance_df = motif_distance_df.drop(['dis_rn'], axis=1)
+        motif_distance_df=motif_distance_df[['motif_id', 'identifier','distance','region_name']]
+        motif_distance_df = pd.concat([motif_distance_df, laplacian_prior_df], axis=0)
+   
+    else:
+        if verbose == True:
+            print('There are no motif hits on chromosome ' + chrs + '. Only priors will be saved.')
+        motif_distance_df=laplacian_prior_df
     return motif_distance_df
 
 def no0s(row):
@@ -212,7 +244,7 @@ def no0s(row):
 
 def calculate_motif_distance_score(verbose, outdir, sample, motif_distance_df, window, distance_weight, tf, seq_type):
         rhf = motif_distance_df.groupby('region_name').count().reset_index()
-        rhf = rhf[['region_name', 'chr']]
+        rhf = rhf[['region_name', 'motif_id']]
         rhf.columns = ['region_name', 'region_hit_frequency']
         motif_distance_df=motif_distance_df.merge(rhf, on='region_name')
         motif_distance_df['distance'] = motif_distance_df.apply(lambda row: no0s(row), axis=1)
@@ -224,11 +256,14 @@ def calculate_motif_distance_score(verbose, outdir, sample, motif_distance_df, w
         #where small_window is 10% of the size of the large window
         small_window = window*0.1
         exponent = math.log(distance_weight, small_window)
+        
         motif_distance_df['distance_score'] = (abs(motif_distance_df['distance']))**exponent
-        motif_distance_df.to_csv(outdir + '/temp/' + seq_type + '_motif_scores/' + sample + '_' + tf + '.txt', sep='\t', index=False)
+        motif_distance_df.to_csv(outdir + '/temp/' + seq_type + '_motif_scores/' + sample + '_scores_' + tf + '.txt', 
+                                 sep='\t', index=False)
         if verbose ==  True:
             print('Successfully calculated distance scores for ' + tf + '.')
-           
+
+            
 def pull_scores(verbose, outdir, seq_type, tf_list, sample):
     if (path.exists(outdir + '/results') == False):
         os.system('mkdir -p ' + outdir + '/results') 
@@ -238,7 +273,7 @@ def pull_scores(verbose, outdir, seq_type, tf_list, sample):
     for tf in tf_list:
         if verbose == True:
             print(tf)
-        df = pd.read_csv(outdir + '/temp/' + seq_type + '_motif_scores/' + sample + '_' + tf + '.txt', 
+        df = pd.read_csv(outdir + '/temp/' + seq_type + '_motif_scores/' + sample + '_scores_' + tf + '.txt', 
                          sep='\t')
         total_distance_score = float(df[['distance_score']].sum())
         motif_id = list(df[['motif_id']].loc[0])
