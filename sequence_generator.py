@@ -4,73 +4,186 @@ from os import path
 import sys
 import pandas as pd
 import numpy as np
+import math
+import time
+from functools import partial
+import multiprocessing
+
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
-import math
-import datetime
-import time
 
 ######################################### Sequence Generator Main #########################################
-def run_sequence_generator(verbose, outdir, sample,
-                           sequence_num, chrom_num, window, 
-                           genome, annotation, seed,
-                           experimental_fimo, whole_genome_fimo):
-    if verbose == True: 
-        print('--------------Expanding Windows---------------')
-    window_annotation(verbose, annotation=annotation, outdir=outdir, sample=sample, window=window)
-    
+def run_sequence_generator(verbose, outdir, sample, genome, annotation,
+                           sequence_num, chrom_num, cpus, seed, window, 
+                           mononucleotide_generation, dinucleotide_generation, 
+                           experimental_fimo, pre_scan):
+    if sequence_num is not None:
+        sequence_num = int(sequence_num)
+    else:
+        with open(annotation, 'r') as an:
+            sequence_num = len(an.readlines())
+            if verbose == True:
+                print('There are ' + str(sequence_num) + ' bidirectionals in the annotation file provided.')
+                print(str(sequence_num) + ' sequences will be simulated.')
+    if chrom_num is not None:
+        chrom_num = int(chrom_num)
+    else:
+        chrom_num = int(math.ceil(sequence_num*(window*2+21)/1150000))
+        if verbose == True:
+            print('The 10% of the average size of a human chromosome is ~11,500,000 bases.')
+            print('Therefore, we are generating ' + str(chrom_num) + ' artificial chromosomes.')
+
+    rs_list=set_seed(verbose=verbose, seed=seed, cpus=cpus, sequence_num=sequence_num)
+
     if verbose == True:
-        print('-------------Extracting Sequences-------------')
+        print('We are generating ' + str(sequence_num) + ' ' + str(window*2) + ' base long sequences on ' + str(chrom_num) + ' artificial chromosomes.')
+        start_time = float(time.time())
+        print('--------------Expanding Windows and Extracting Sequences---------------')
+    window_annotation(verbose, annotation=annotation, 
+                      outdir=outdir, sample=sample, window=window)
     get_sequences(verbose, genome=genome, outdir=outdir, sample=sample)
+    ls = list_sequences(outdir=outdir, sample=sample)
 
-    if verbose == True: 
-        print('-----------Counting Base Content and Plot Generation-------------')
-    window_seq = list_sequences(outdir=outdir, sample=sample)
-    base_plot(verbose, seq=window_seq, plottitle=sample, outdir=outdir,
-              sample=sample,  window=window)
-    tsv = (outdir + '/generated_sequences/' + sample +'_base_content.tsv')
+    if dinucleotide_generation == False and mononucleotide_generation == False:
+        if verbose == True:
+            print('No sequences were simulated. To simulate sequences set dinucleotide_generation or mononucleotide_generation to True.')
 
-    if verbose == True: 
-        print('-----------Start Simulated Sequence Generation-------------')
-        start_time = int(time.time())
-    npseed = set_seed(verbose, seed=seed)
-    
-    if verbose == True: 
-        print('-----------Reading Per-Base Sequence Frequency----------------')
-        print('Base Content File: ' + tsv)
-    position_freq = base_composition_input(base_composition=tsv)
+    if dinucleotide_generation == True:
+        if verbose == True:
+            start_prob = float(time.time())
+            print('-----------Calculating Dinucleotide Dependant Base Position Probabilities-------------')
+        first_position = first_dinuc(ls=ls, outdir=outdir, sample=sample)
+        position_givenA=conditional_probability_counter(nuc='A', ls=ls, window=window, outdir=outdir, sample=sample)
+        position_givenC=conditional_probability_counter(nuc='C', ls=ls, window=window, outdir=outdir, sample=sample)
+        position_givenG=conditional_probability_counter(nuc='G', ls=ls, window=window, outdir=outdir, sample=sample)
+        position_givenT=conditional_probability_counter(nuc='T', ls=ls, window=window, outdir=outdir, sample=sample)
+        if verbose == True:
+            stop_prob = float(time.time())
+            prob_time = (stop_prob-start_prob)/60
+            print('Probability calculations took ' + str(prob_time) + ' min.') 
+            print('--------------------Generating Dinucleotide Sequences----------------------')
+            print('Initiating ' + str(cpus) + ' cpus.')
+        pool = multiprocessing.Pool(cpus)
+        seqs = pool.map(partial(sequence_generator, 
+                               inputs=[verbose, window, first_position, position_givenA, position_givenC, position_givenG, position_givenT]), rs_list)
+        pool.close()
+        pool.join()
+        seqs=[seq for seqs_per_cpu in seqs for seq in seqs_per_cpu]
+        write_fasta(verbose, generated_sequences=seqs, sample=sample, outdir=outdir, 
+                    window=window, sequence_num=sequence_num, chrom_num=chrom_num, seq_type='simulated')
 
-    if verbose == True: 
-        print('-----------Generating Sequences-------------------------------')
-    generated_sequences = sequence_generator(verbose, bases=['A', 'T', 'G', 'C'], position_freq=position_freq, 
-                                             sequence_num=sequence_num)
+        get_sequences(verbose=True, genome=(outdir + '/generated_sequences/' + str(sample) + '_simulated.fa'), 
+                      outdir=outdir, sample='dinucleotide_base_composition')
+        dbls = list_sequences(outdir=outdir, sample='dinucleotide_base_composition')
+        mono_probabilities= mono_probability_counter(ls=dbls, window=window, outdir=outdir, sample='dinucleotide_base_composition')
+        plot_positional_bias(outdir=outdir, sample='dinucleotide_base_composition', window=window, mono_probabilities=mono_probabilities)
 
-    if verbose == True: 
-        print('-----------Writing Sequences to Fasta File--------------------')
-    write_fasta(verbose, generated_sequences=generated_sequences, sample=sample, outdir=outdir, 
-                window=window, sequence_num=sequence_num, chrom_num=chrom_num)
-    
-    if verbose == True: 
-        print('Simulated Fasta File: ' + outdir + '/generated_sequences/' + str(sample) + '_simulated.fa')
-        print('----------------Simulated Sequence Generation Complete------------------------------')
-        stop_time = int(time.time())
-        print('Stop time: %s' % str(datetime.datetime.now()))
-        print('Total Run time :', stop_time-start_time, ' seconds')
-
-    if verbose == True: 
-        print('-----------Indexing Fasta, Generating Chrm Sizes and Creating Bedfiles--------------------')
-    index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, genome=genome, seq_type='simulated')
-    generate_bed(verbose, outdir=outdir, sample=sample, sequence_num=sequence_num, chrom_num=chrom_num, 
-                 window=window, annotation=annotation, seq_type='simulated')
-    if experimental_fimo == True:
-        reformat_expt_fasta(verbose, outdir=outdir, sample=sample, chrom_num=chrom_num, window=window)
-        index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, genome=genome, seq_type='experimental')
+        if verbose == True:
+            stop_time = float(time.time())
+            seq_time = (stop_time-stop_prob)/60
+            print('Dinucleotide sequence generation took ' + str(seq_time) + ' min.') 
+            print('-----------Indexing Dinucleotide Sequences and Creating Bedfiles--------------------')
+        index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, seq_type='simulated')
         generate_bed(verbose, outdir=outdir, sample=sample, sequence_num=sequence_num, chrom_num=chrom_num, 
-             window=window, annotation=annotation, seq_type='experimental')
-    if whole_genome_fimo == True:
-        index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, genome=genome, seq_type='whole_genome') 
-        
+                 window=window, annotation=annotation, seq_type='simulated')
+
+    if mononucleotide_generation == True:
+        if verbose == True:
+            start_prob = float(time.time())
+            print('-----------Calculating Mononucleotide Dependant Base Position Probabilities-------------')
+        mono_probabilities=mono_probability_counter(ls=ls, window=window, outdir=outdir, sample=sample)
+        plot_positional_bias(outdir=outdir, sample=sample, window=window, mono_probabilities=mono_probabilities)
+        if verbose == True:
+            stop_prob = float(time.time())
+            prob_time = (stop_prob-start_prob)/60
+            print('Probability calculations took ' + str(prob_time) + ' min.') 
+            print('--------------------Generating Mononucleotide Sequences----------------------')
+            print('Initiating ' + str(cpus) + ' cpus.')
+        pool = multiprocessing.Pool(cpus)
+        seqs = pool.map(partial(mono_sequence_generator, 
+                               inputs=[window, mono_probabilities]), rs_list)
+        pool.close()
+        pool.join()        
+        seqs=[seq for seqs_per_cpu in seqs for seq in seqs_per_cpu]
+        write_fasta(verbose, generated_sequences=seqs, sample=sample, outdir=outdir, 
+                    window=window, sequence_num=sequence_num, chrom_num=chrom_num, seq_type='mononucleotide_simulated')
+        if verbose == True:
+            stop_time = float(time.time())
+            seq_time = (stop_time-stop_prob)/60
+            print('Mononucleotide sequence generation took ' + str(seq_time) + ' min.') 
+            print('-----------Indexing Mononucleotide Sequences and Creating Bedfiles--------------------')
+        index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, seq_type='mononucleotide_simulated')
+        generate_bed(verbose, outdir=outdir, sample=sample, sequence_num=sequence_num, chrom_num=chrom_num, 
+                 window=window, annotation=annotation, seq_type='mononucleotide_simulated')
+
+    if experimental_fimo == True and pre_scan is None:
+        if verbose == True:
+            print('-----------Formating Experimental Sequences for FIMO Scan--------------------')
+        chrom_num_exp = int(math.ceil(len(ls)*(window*2+21)/11500000))
+        write_fasta(verbose, generated_sequences=ls, sample=sample, outdir=outdir, 
+                    window=window, sequence_num=len(ls), chrom_num=chrom_num_exp, seq_type='experimental')
+        if verbose == True:
+            print('-----------Indexing Experimental Sequences and Creating Bedfiles--------------------')
+        index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, seq_type='experimental')
+        generate_bed(verbose, outdir=outdir, sample=sample, sequence_num=len(ls), chrom_num=chrom_num_exp, 
+                 window=window, annotation=annotation, seq_type='experimental')
+
 ######################################### Sequence Generator Functions #########################################
+################################################## Setting up ##################################################
+def set_seed(verbose, seed, cpus, sequence_num):
+    '''Sets numpy seed for the sequence generation'''
+    if seed is not None:
+        if verbose == True:
+            print('-----------Setting Seed for the Sequence Generator.-----------')
+            print('User defined seed: '+ str(seed))
+        try:
+            seed=int(seed)
+        except:
+            if verbose==True:
+                print('User defined seed is not a number! Setting seed to time.')
+            seed=global_seed(verbose=verbose)
+    else:
+        seed=global_seed(verbose=verbose)
+
+    if seed==0:
+        if verbose==True:
+            print('Seed is set to 0, this cannot be reproduced. Resetting seed to time.')
+        seed=global_seed(verbose=verbose)
+    
+    rng_list=[]
+    for c in range(cpus):
+        rng = np.random.default_rng(seed+c) 
+        rng_list.append(rng)
+        
+    ### set how many sequences will be generated per cpu
+    ### this number of sequences will be paired with a rng 
+    seq_per_cpu = math.floor(sequence_num/cpus)
+    seq_last_cpu = math.floor(sequence_num/cpus) + sequence_num%cpus
+    if cpus==1:
+        spc_list=[seq_per_cpu]
+        print('Only one cpu allocated to generate ' + str(sequence_num) + ' sequences.')
+    elif cpus > 1:
+        if verbose == True:
+            print('We are generating ' + str(seq_per_cpu) + ' sequences per cpu.')
+            print('With ' + str(sequence_num%cpus) + ' additional sequence(s) on the last cpu.')
+        spc_list=[seq_per_cpu]*(cpus-1)
+        spc_list.append(seq_last_cpu)
+
+    ### combining the lists to loop through during sequence generation
+    rs_list=[]
+    for i,rng in enumerate(rng_list):
+        rs=[rng,spc_list[i]]
+        rs_list.append(rs)
+    return rs_list
+                
+def global_seed(verbose):
+    '''function used by set seed to set seed to the time'''
+    if verbose==True:
+        print('-----------Setting Seed for the Sequence Generator------------')
+        t= time.time()
+        print('Time in fractional seconds of:', str(t))
+        print('Setting seed on the clock: ' + str(int(t)))
+    return(int(t))
 
 def window_annotation(verbose, annotation, outdir, sample, window):
     '''This function takes in the annotation file from Tfit and redefines mu and extends the window
@@ -78,7 +191,6 @@ def window_annotation(verbose, annotation, outdir, sample, window):
     '''
     if verbose == True:    
         print('Annotation File: ' + annotation)
-    
     try:
         os.system('mkdir -p ' + outdir + '/annotations')
     except OSError:
@@ -86,16 +198,7 @@ def window_annotation(verbose, annotation, outdir, sample, window):
         sys.exit(1)
     else:
         if verbose == True:
-            print('Successfully created the directory %s' % outdir + '/annotations')
-    os.system('rsync ' + annotation + ' ' + outdir + '/annotations/')        
-    windower(bed=annotation, outdir=outdir, sample=sample, window=int(window), seq_type='experimental', ident=False)
-    
-def get_sequences(verbose, genome, outdir, sample):
-    '''This function pulls the sequences out of the windowed annotation file and outputs them in 
-    generated_sequences for further use'''
-    if verbose == True:
-        print('Genome Used: ' + genome + '\nOutdir: ' + outdir + '\nSample: ' + sample)
-    
+            print(outdir + '/annotations exists.')     
     try:
         os.system('mkdir -p ' + outdir + '/temp')
     except OSError:
@@ -103,42 +206,7 @@ def get_sequences(verbose, genome, outdir, sample):
         sys.exit(1)
     else:
         if verbose == True:
-            print('Successfully created the directory %s' % outdir + '/temp')
-            
-    os.system('bedtools getfasta -fi ' + genome + 
-              ' -bed ' + outdir + '/annotations/' + sample + '_experimental_window.bed' + 
-              ' -fo ' + outdir + '/temp/' + sample + '_experimental_window_sequences.fa')
-    if (path.exists(outdir + '/temp/' + sample + '_experimental_window_sequences.fa') == False):
-        print('Extracted experimental sequences failed. Make sure bedtools is installed.')
-        sys.exit(1)
-    else:
-        if verbose == True:
-            print('Extracted Experimental Sequences Output: ' + outdir + '/temp/' + sample + '_experimental_window_sequences.fa')
-
-def list_sequences(outdir, sample):
-    '''This function strings experimental sequences together in a list'''
-    fasta_sequences = outdir + '/temp/' + sample + '_experimental_window_sequences.fa'
-    sequences = []
-    sequence_names = []
-
-    #add sequences and sequence names to lists                                                                                                                     
-    with open(fasta_sequences) as fa:
-        for line in fa:
-            line = line.strip('\n')
-            if '>' not in line:
-                sequences.append(line)
-            else:
-                sequence_names.append(line)
-
-    #return list with sequence         
-    return sequences
-
-def base_plot(verbose, seq, plottitle, outdir, sample, window):
-    '''plot line plot for each bases content across sequences for all sequences on the same grid.
-    This script calls count_bases.
-    Parameters:
-    plottitle : str - title for the plot represented as a string'''
-    
+            print(outdir + '/temp exists')
     try:
         os.system('mkdir -p ' + outdir + '/generated_sequences')
     except OSError:
@@ -147,216 +215,233 @@ def base_plot(verbose, seq, plottitle, outdir, sample, window):
             sys.exit(1)
     else:
         if verbose == True:
-            print('Successfully created the directory %s' % outdir + '/generated_sequences')
+            print(outdir + '/generated_sequences exists')
+    try:
+        os.system('mkdir -p ' + outdir + '/plots')
+    except OSError:
+        print ('Creation of the directory %s failed' % outdir + '/plots')
+        sys.exit(1)
+    else:
+        if verbose == True:
+            print(outdir + '/plots exists.')  
+    windower(bed=annotation, outdir=outdir, sample=sample, window=int(window), seq_type='experimental', ident=False)
+
+def get_sequences(verbose, genome, outdir, sample):
+    '''This function pulls the sequences out of the windowed annotation file and outputs them in 
+    generated_sequences for further use'''
     
-    counts = count_bases(verbose, sequences=seq, outdir=outdir, sample=sample, window=window)
-
-    ##get positions                                                   
-    starting=int(window)
-    stopping=int(window)+1
-    positions = np.arange(-starting,stopping,1)
-                
-    ### Line plot for each base on one grid ###
-    plt.figure(figsize=(12,10))
-    gs = plt.GridSpec(1, 1)
-    ax0 = plt.subplot(gs[0])
-    color_list = ['blue', 'purple', 'orange', 'red']
-    base_list=['A','T','C','G']
-    for i in range(0,4):
-        ax0.plot(positions,counts[i],color=color_list[i], alpha=0.75, label=base_list[i])
-    ax0.set_xlabel('Distance (bp)',fontsize=30,fontweight='bold')
-    ax0.set_ylabel('Base Content',fontsize=30,fontweight='bold')
-    plt.xticks(fontsize = 25)
-    plt.yticks(fontsize = 25)
-    plt.legend(bbox_to_anchor=(1.05, 1),fontsize = 25, loc=2, borderaxespad=0.)
-    plt.suptitle(plottitle, fontsize=40, fontweight='bold')
-    plt.savefig(outdir + '/generated_sequences/' + sample + '_BaseDistribution.png',bbox_inches='tight')
-    plt.cla()
-                                                                                                         
-    ### Smooth the frequencies for better visualization ### 
-    plt.figure(figsize=(12,10))
-    gs1 = plt.GridSpec(1, 1)
-    ax1 = plt.subplot(gs1[0])
-
-    for i in range(0,4):
-        smoothed_count = savgol_filter(tuple(np.array(counts)), 61, 3) # window size 61, polynomial order 3     
-        ax1.plot(positions,smoothed_count[i],color=color_list[i], alpha=0.75, label=base_list[i])
-    ax1.set_xlabel('Distance (bp)',fontsize=30,fontweight='bold')
-    ax1.set_ylabel('Base Content',fontsize=30,fontweight='bold')
-    plt.xticks(fontsize = 25)
-    plt.yticks(fontsize = 25)
-    plt.legend(bbox_to_anchor=(1.05, 1),fontsize = 25, loc=2, borderaxespad=0.)
-    plt.suptitle(plottitle, fontsize=40, fontweight='bold')
-    plt.savefig(outdir + '/generated_sequences/' + sample + '_SmoothedBaseDistribution.png',bbox_inches='tight')
-    plt.cla()
+    if sample=='dinucleotide_base_composition':
+        annotation_file=outdir + '/annotations/' + sample + '_simulated_window.bed'
+    else:
+        annotation_file=outdir + '/annotations/' + sample + '_experimental_window.bed'   
     
-    if verbose == True:
-        print('Generated Base Composition Plots: ' + outdir + '/generated_sequences/' + sample + '_SmoothedBaseDistribution.png and ' + sample + '_BaseDistribution.png')
+    if (path.exists(outdir + '/temp/' + sample + '_window_sequences.fa') == True):
+        if verbose==True:
+            print('Experimental sequences are already extracted with bedtools.')
+    else:
+        os.system('bedtools getfasta -fi ' + genome + 
+                  ' -bed ' + annotation_file + 
+                  ' -fo ' + outdir + '/temp/' + sample + '_window_sequences.fa')
 
+    if (path.exists(outdir + '/temp/' + sample + '_window_sequences.fa') == False):
+        print('Extracted experimental sequences failed. Make sure bedtools/2.25.0 is installed.')
+        sys.exit(1)
+    else:
+        if verbose == True:
+            print('Extracted Experimental Sequences Output: ' + outdir + '/temp/' + sample + '_window_sequences.fa')
 
-def count_bases(verbose, sequences, outdir, sample, window):
-    '''Called by base_plot. This script calculates per position base composition across multiple sequences of even length.
-    anew,tnew,cnew,gnew,nnew : list of lists normalized base counts for every position across all sequences'''
-    if verbose==True:
-        print('Sequence List: Contains ' + str(len(sequences)) + ' elements. ')
-
-    #since the window is flanking a single base we accout for that by 2(w)+1
-    sequence_length = int(2*int(window)+1)
-    if verbose==True:
-        print('Full Window Length: +/- ' + str(window) + ' = ' + str(sequence_length))
-
-    ##initialize lists with length of sequences                                                                                                                                  
-    a = [0]*sequence_length
-    t = [0]*sequence_length
-    c = [0]*sequence_length
-    g = [0]*sequence_length
-    n = [0]*sequence_length
-
-    ##for each positions count the occurance of each base                                                                                                                        
-    ##across all sequences in the the input list                                                                                                                                 
-    for i in range(sequence_length):
-        ##initialize counters                                                                                                                                                    
-        count_a = 0
-        count_t = 0
-        count_c = 0
-        count_g = 0
-        count_n = 0
-        for j in sequences:
-            if j[i] == 'a' or j[i] == 'A':
-                count_a = count_a + 1
-                a[i] = count_a
-            elif j[i] == 't' or j[i] == 'T':
-                count_t = count_t + 1
-                t[i] = count_t
-            elif j[i] == 'g' or j[i] == 'G':
-                count_g = count_g + 1
-                g[i] = count_g
-            elif j[i] == 'c' or j[i] == 'C':
-                count_c = count_c + 1
-                c[i] = count_c
-            elif j[i] == 'n' or j[i] == 'N':
-                count_n = count_n + 1
-                n[i] = count_n
-
-    ##evenly distribute Ns across all bases                                                                                                                                      
-    nnew = [x / 4 for x in n]
-
-    anew = [ai + bi for ai,bi in zip(a,nnew)]
-    tnew = [ai + bi for ai,bi in zip(t,nnew)]
-    gnew = [ai + bi for ai,bi in zip(g,nnew)]
-    cnew = [ai + bi for ai,bi in zip(c,nnew)]
-
-    ##get the base frequencies of all bases                                                                                                                                      
-    anew = [x / len(sequences) for x in anew]
-    tnew = [x / len(sequences) for x in tnew]
-    cnew = [x / len(sequences) for x in cnew]
-    gnew = [x / len(sequences) for x in gnew]
-
-    base_df = pd.DataFrame({'A': anew,
-                            'T': tnew,
-                            'G': cnew,
-                            'C': gnew})
-
-    base_df.to_csv(outdir + '/generated_sequences/' + sample +'_base_content.tsv', sep='\t')
-    if verbose == True:
-        print('Generated Positional Base Frequencies: ' + outdir + '/generated_sequences/' + sample +'_base_content.tsv')
-    return anew, tnew, cnew, gnew, nnew
-
-def set_seed(verbose, seed):
-    '''Sets numpy seed for the sequence generation'''
-    if verbose == True: 
-        print('Start time: %s' % str(datetime.datetime.now()))
-        if seed == 0:
-            npseed = np.random.seed()
-            if verbose == True: 
-                print('-----------Setting Seed for the Sequence Generator.-----------')
-                print('Using random seed.')
-                print('WARNING: Sequences generated using a random seed can not be reproduced.')
-        elif seed is True:
-            npseed = np.random.seed(global_seed(verbose=verbose))
-        else:
-            npseed = np.random.seed(seed)
-            if verbose == True:
-                print('-----------Setting Seed for the Sequence Generator.-----------')
-                print('User defined seed:', seed)
-            return npseed
-                
-def global_seed(verbose):
-    '''function used by set seed to set seed to the time'''
-    if verbose==True:
-        print('-----------Setting Seed for the Sequence Generator------------')
-        print('Time in fractional seconds of:', time.time())
-        print('Time as an interger:',int(time.time()))
-        print('Setting seed on the clock')
-    print('np.random.random(',int(time.time()),') => ',np.random.random())
-    return(int(time.time()))
-
-def base_composition_input(base_composition):
-    '''takes in base_compositions that are in .tsv format and 
-    frequencies per position to use in simulating base_compositions using a 
-    1st order Markov Model.
-    '''
-
-    position_feq = []
-
-    with open(base_composition) as bc:
-
-        ##remove the header line
-                ##remove the header line
-        lines = bc.readlines()[1:]
-        for i in range(len(lines)):
-            pos_prob = []
-            try:
-                pos_prob.append(lines[i].strip('\n').split(',')[1])
-                pos_prob.append(lines[i].strip('\n').split(',')[2])
-                pos_prob.append(lines[i].strip('\n').split(',')[3])
-                pos_prob.append(lines[i].strip('\n').split(',')[4])
-                position_feq.append(pos_prob)
-            except IndexError:
-                
-                pos_prob.append(lines[i].strip('\n').split('\t')[1])
-                pos_prob.append(lines[i].strip('\n').split('\t')[2])
-                pos_prob.append(lines[i].strip('\n').split('\t')[3])
-                pos_prob.append(lines[i].strip('\n').split('\t')[4])
-                position_feq.append(pos_prob)
+def list_sequences(outdir, sample):
+    '''This function strings experimental sequences together in a list'''
+    fasta_sequences = outdir + '/temp/' + sample + '_window_sequences.fa'
+    sequences = []
+    sequence_names = []                                                                                                        
+    with open(fasta_sequences) as fa:
+        for line in fa:
+            line = line.strip('\n')
+            if '>' not in line:
+                sequences.append(line)
             else:
-                print("Check the input file. \n It should be tab or comma separated")
+                sequence_names.append(line)      
+    return sequences
 
+######################################### Dinucleotide Sequences #########################################
+def first_dinuc(ls, outdir, sample):
+    '''For dinucleotide dependant sequence generation. This function calculates the probability of the first dinucleotide pair in the window'''        
+    dinuc_list = ['AA', 'AC', 'AG', 'AT', 'CA', 'CC', 'CG', 'CT',
+                  'GA', 'GC', 'GG', 'GT', 'TA', 'TC', 'TG', 'TT']
+    first_position=[1]*len(dinuc_list)
+    for j in ls:
+        for n in range(len(dinuc_list)):
+            if j[0]+j[1] == dinuc_list[n]:
+                first_position[n]=first_position[n]+1
+            else:
+                continue
 
-    return(position_feq)
+    first_position = [x / (sum(first_position)) for x in first_position]
 
-def sequence_generator(verbose, bases, position_freq, sequence_num):
-    '''takes in frequencies per position and simulates sequences using a 
-    1st order Markov Model.
-    '''
+    df = pd.DataFrame(first_position, index=dinuc_list)
+    df.columns=['dinucleotide_probabilities']
+    df.to_csv(outdir + '/generated_sequences/' + sample + '_position1_dinucleotide_probabilities.tsv', sep='\t')
+    return first_position
+
+def conditional_probability_counter(nuc, ls, window, outdir, sample):
+    '''For dinucleotide dependant sequence generation. This function calculates the probability of the next nucleotide in the sequence given information on the previous nucleotide'''
+    ll=[]
+    seq_length = window*2+1
+    pos=[x+1 for x in range(1,seq_length)]
+
+    for i in range(1,seq_length-1):
+        ll.append([1,1,1,1])
+        for j in ls:
+            if j[i] == nuc:
+                seq_counter = j
+            else:
+                continue
+
+            if seq_counter[i+1] == 'A':
+                ll[i-1][0]=ll[i-1][0]+1
+            if seq_counter[i+1] == 'C':
+                ll[i-1][1]=ll[i-1][1]+1
+            if seq_counter[i+1] == 'G':
+                ll[i-1][2]=ll[i-1][2]+1
+            if seq_counter[i+1] == 'T':
+                ll[i-1][3]=ll[i-1][3]+1
+            else:
+                continue
+
+        ll[i-1] = [x / (sum(ll[i-1])) for x in ll[i-1]]
+    base_df = pd.DataFrame.from_records(ll, columns=['A','C','G','T'])
+    base_df.to_csv(outdir + '/generated_sequences/' + sample +'_conditional_probabilites_given'+ nuc + '.tsv', sep='\t', index=False)
+    return ll
+
+def sequence_generator(rs_list, inputs):
+    '''For dinucleotide dependant sequence generation. This function generates the simulated sequences'''
+    verbose, window, first_position, position_givenA, position_givenC, position_givenG, position_givenT = inputs
+    rng=rs_list[0]
+    sequence_num=rs_list[1]
     
-    first = [position_freq[0:1]]
-    last =  [position_freq[-1:]]
-    if verbose == True:
-        print('Position Frequency: Contains ' + str(len(position_freq)) + ' elements. ' + str(first) + '...' + str(last))
-    
-    sequences = np.empty([sequence_num, len(position_freq)], dtype=str)
-    
-    for i in range(len(position_freq)):
-        column = np.random.choice(bases, sequence_num, p=position_freq[i])
-        sequences[:,i] = column
-        
+    print(rng)
+    print(sequence_num)
+              
+    dinuc_list = ['AA', 'AC', 'AG', 'AT', 'CA', 'CC', 'CG', 'CT',
+                  'GA', 'GC', 'GG', 'GT', 'TA', 'TC', 'TG', 'TT']
+    bases=['A','C','G','T']
+                  
+    #checking CONDITIONAL sequence lengths
+    #should be total sequence length minus 2 since the first 2 are generated from first position
+    if (len(position_givenA) == window*2-1) == False:
+        sys.exit()
+    elif (len(position_givenA) == len(position_givenC)) == False:
+        sys.exit()
+    elif (len(position_givenA) == len(position_givenG)) == False:
+        sys.exit()
+    elif (len(position_givenA) == len(position_givenT)) == False:
+        sys.exit()
+    else:
+        sequence_length= (window*2+1)
+
+    sequences = np.empty([sequence_num, sequence_length], dtype=str)
+    column = rng.choice(dinuc_list, sequence_num, p=first_position)    
+
+    for i in range(sequence_num):
+        sequences[:,0][i] = column[i][0]
+        sequences[:,1][i] = column[i][1]
+        for j in range(2,sequence_length):
+            if str(sequences[:,j-1][i]) == 'A':
+                choice=(rng.choice(bases, 1, p=position_givenA[j-2]))
+                sequences[:,j][i] = choice[0]
+            elif str(sequences[:,j-1][i]) == 'C':
+                choice=(rng.choice(bases, 1, p=position_givenC[j-2]))
+                sequences[:,j][i] = choice[0]
+            elif str(sequences[:,j-1][i]) == 'G':
+                choice=(rng.choice(bases, 1, p=position_givenG[j-2]))
+                sequences[:,j][i] = choice[0]
+            elif str(sequences[:,j-1][i]) == 'T':
+                choice=(rng.choice(bases, 1, p=position_givenT[j-2]))
+                sequences[:,j][i] = choice[0]
+            else:
+                print('ERROR')
+                sys.exit()
+
     joined_sequences = [''.join(row) for row in sequences]
-    
     return joined_sequences
 
-def write_fasta(verbose, generated_sequences, sample, outdir, window, sequence_num, chrom_num):
+######################################### Mononucleotide Sequences #########################################
+def mono_probability_counter(ls, window, outdir, sample):
+    '''For mononucleotide dependant sequence generation. This function calculates the probability of each nucleotide at a given position'''
+    ll=[]
+    seq_length = window*2+1
+    ##for each positions count the occurance of each base                                                                                                                        
+    ##across all sequences in the the input list                                                                                                                                 
+    for i in range(seq_length):
+        ll.append([1,1,1,1])
+        for j in ls:
+            if j[i] == 'A':
+                ll[i][0]=ll[i][0]+1
+            if j[i] == 'C':
+                ll[i][1]=ll[i][1]+1
+            if j[i] == 'G':
+                ll[i][2]=ll[i][2]+1
+            if j[i] == 'T':
+                ll[i][3]=ll[i][3]+1
+            else:
+                continue
+        ll[i] = [x / (sum(ll[i])) for x in ll[i]]
+    if sample == 'dinucleotide_base_composition':
+        print('Calculating positional base composition based on dinucleotide generated sequences.')
+    else:
+        base_df = pd.DataFrame.from_records(ll, columns=['A','C','G','T'])
+        base_df.to_csv(outdir + '/generated_sequences/' + sample +'_mononucleotide_probabilites.tsv', sep='\t', index=False)
+    return ll
+
+def mono_sequence_generator(rs_list, inputs):
+    '''For mononucleotide dependant sequence generation. This function generates the simulated sequences'''
+    window, mono_probabilities = inputs
+    
+    rng=rs_list[0]
+    sequence_num=rs_list[1]
+    
+    print(rng)
+    print(sequence_num)
+    
+    bases=['A','C','G','T']
+                              
+    #checking CONDITIONAL sequence lengths
+    #should be total sequence length minus 2 since the first 2 are generated from first position
+
+    if (len(mono_probabilities) == window*2+1) == False:
+        sys.exit()
+    else:
+        sequence_length= (window*2+1)
+
+    sequences = np.empty([sequence_num, sequence_length], dtype=str)
+
+    for i in range(sequence_length):
+        column = rng.choice(bases, sequence_num, p=mono_probabilities[i])
+        sequences[:,i] = column
+
+    joined_sequences = [''.join(row) for row in sequences]
+    return joined_sequences    
+
+######################################### Saving and Formating Sequences #########################################
+def write_fasta(verbose, generated_sequences, sample, outdir, window, sequence_num, chrom_num, seq_type):
     ''' writes sequences generated into fasta file format and outputs them in generated sequences'''
     seq_per_chrom, seq_last_chrom = define_seq_structure(verbose, sequence_num=sequence_num, chrom_num=chrom_num, window=window)
-    
+    if seq_type =='simulated' or seq_type =='mononucleotide_simulated':
+        chrom = '>sim'
+    elif seq_type == 'experimental':
+        chrom= '>exp'
+    else:
+        chrom='>chr'
+
     file=[]
     for i in range(len(generated_sequences)):
         file.append(str(generated_sequences[i]) + str('N')*20)      
 
     dd = {}
     for i in range(0,chrom_num-1):
-        dd['>sim_' + str(i + 1)] = str(file[(seq_per_chrom)*i:(seq_per_chrom)*(i+1)]).replace("', '","").replace("['","").replace("']","")
-    dd['>sim_' + str(chrom_num)] = str(file[(seq_per_chrom)*(chrom_num-1):]).replace("', '","").replace("['","").replace("']","")
+        dd[chrom + str(i + 1)] = str(file[(seq_per_chrom)*i:(seq_per_chrom)*(i+1)]).replace("', '","").replace("['","").replace("']","")
+    dd[chrom + str(chrom_num)] = str(file[(seq_per_chrom)*(chrom_num-1):]).replace("', '","").replace("['","").replace("']","")
 
     df = pd.DataFrame.from_dict(dd, orient='index')
 
@@ -364,81 +449,43 @@ def write_fasta(verbose, generated_sequences, sample, outdir, window, sequence_n
     df.columns = range(df.shape[1])
     df = df.stack()
     df = pd.DataFrame(df).reset_index(drop=True)
+    return df.to_csv(outdir + '/generated_sequences/' + str(sample) + '_' + seq_type + '.fa', header=None, index=False, sep='\t')
 
-    return df.to_csv(outdir + '/generated_sequences/' + str(sample) + '_simulated.fa', header=None, index=False, sep='\t')
-
-def index_and_chrm_sizes(verbose, outdir, sample, genome, seq_type):
-    '''generates index and chromosome size files for the genome of interest'''
-    if seq_type == 'whole_genome':
-        g = genome.split('/')[-1].split('.')[-2]
-        os.system('cut -f1,2 ' + genome + '.fai > ' + outdir + '/generated_sequences/' + g + '.chrom.sizes')
-        if (path.exists(outdir + '/generated_sequences/' + g + '.chrom.sizes') == False):
-            print('Creation of chromosome size file failed.')
-            sys.exit(1)
-        else:
-            if verbose == True:
-                print('Successfully created chromosome size file %s' % outdir + '/generated_sequences/' + g + '.chrom.sizes')
-    
+def index_and_chrm_sizes(verbose, outdir, sample, seq_type):
+    os.system('samtools faidx ' + outdir + '/generated_sequences/' + sample + '_' + seq_type + '.fa')
+    if (path.exists(outdir + '/generated_sequences/' + sample + '_' + seq_type + '.fa.fai') == False):
+        print('Creation of index file failed. Make sure samtools is installed.')
+        sys.exit(1)
     else:
-        os.system('samtools faidx ' + outdir + '/generated_sequences/' + sample + '_' + seq_type + '.fa')
-        if (path.exists(outdir + '/generated_sequences/' + sample + '_' + seq_type + '.fa.fai') == False):
-            print('Creation of index file failed. Make sure samtools is installed.')
-            sys.exit(1)
-        else:
-            if verbose == True:
-                print('Successfully created index file %s' % outdir + '/generated_sequences/' + sample + '_' + seq_type + '.fa.fai')
-
-        os.system('cut -f1,2 ' + outdir + '/generated_sequences/' + sample + '_' + seq_type + '.fa.fai > ' + outdir + '/generated_sequences/' + sample + '_' + seq_type + '.chrom.sizes')
-
-        if (path.exists(outdir + '/generated_sequences/' + sample + '_' + seq_type + '.chrom.sizes') == False):
-            print('Creation of chromosome size file failed.')
-            sys.exit(1)
-        else:
-            if verbose == True:
-                print('Successfully created chromosome size file %s' % outdir + '/generated_sequences/' + sample + '_' + seq_type + '.chrom.sizes')      
-    
-           
-def reformat_expt_fasta(verbose, outdir, sample, chrom_num, window):
-    '''reformats the experimental sequences pulled from the whole genome
-    by get_sequences() into a more 'genome-like' orientation on large chromosomes'''
-    df = pd.read_csv(outdir + '/temp/' + sample + '_experimental_window_sequences.fa', header=None)
-    df = df[df.index % 2 != 0]
-    l_expt_seq = df.values.tolist()
-    flat_list = [item for sublist in l_expt_seq for item in sublist]
-    strN = str('N')*20
-    file = ['{}{}'.format(i,strN) for i in flat_list]
-    
-    
-    sequence_num = len(file)
-    if verbose == True:
-        print('Verifying the reformating of the experimental fasta...')
-    seq_per_chrom, seq_last_chrom = define_seq_structure(verbose, sequence_num=sequence_num, chrom_num=chrom_num, window=window) 
-    
-    dd = {}
-    for i in range(0,chrom_num-1):
-        dd['>exp_' + str(i + 1)] = str(file[(seq_per_chrom)*i:(seq_per_chrom)*(i+1)]).replace("', '","").replace("['","").replace("']","")
-    dd['>exp_' + str(chrom_num)] = str(file[(seq_per_chrom)*(chrom_num-1):]).replace("', '","").replace("['","").replace("']","")
-    
-    df = pd.DataFrame.from_dict(dd, orient='index')
-    df.columns = range(df.shape[1])
-    df = df.reset_index()
-    df = df.stack()
-    df = pd.DataFrame(df).reset_index(drop=True)
-    df.to_csv(outdir + '/generated_sequences/' + str(sample) + '_experimental.fa', header=None, index=False, sep='\t')
+        if verbose == True:
+            print('Successfully created index file %s' % outdir + '/generated_sequences/' + sample + '_' + seq_type + '.fa.fai')
+    os.system('cut -f1,2 ' + outdir + '/generated_sequences/' + sample + '_' + seq_type + '.fa.fai > ' + outdir + '/generated_sequences/' + sample + '_' + seq_type + '.chrom.sizes')
+    if (path.exists(outdir + '/generated_sequences/' + sample + '_' + seq_type + '.chrom.sizes') == False):
+        print('Creation of chromosome size file failed.')
+        sys.exit(1)
+    else:
+        if verbose == True:
+            print('Successfully created chromosome size file %s' % outdir + '/generated_sequences/' + sample + '_' + seq_type + '.chrom.sizes')     
 
 def generate_bed(verbose, outdir, sample, sequence_num, chrom_num, window, annotation, seq_type):
     '''generates bed files defining mu for the simulated and experimental 'genomes'
     Calls windower'''
-    if seq_type == 'experimental': 
-        #getting the sequence number
-        annotation_file = pd.read_csv(annotation, header=None)
-        sequence_num = len(annotation_file)
-    elif seq_type == 'simulated':
+    if seq_type == 'simulated' or seq_type == 'mononucleotide_simulated':
         sequence_num = sequence_num
+        chrom='sim'
+    elif seq_type == 'experimental': 
+        #getting the sequence number
+        with open(annotation, 'r') as an:
+            sequence_num = len(an.readlines())
+        chrom='exp'
+    else:
+        sequence_num = sequence_num
+        chrom='chr'
+    
     if verbose == True:
         print('Verifying the structure of the bed files...')
     seq_per_chrom, seq_last_chrom = define_seq_structure(verbose, sequence_num, chrom_num, window)
-    
+        
     #creating the locations
     dbed = {}
     for i in range(0,(seq_per_chrom)):
@@ -446,53 +493,43 @@ def generate_bed(verbose, outdir, sample, sequence_num, chrom_num, window, annot
 
     dfbed = pd.DataFrame.from_dict(dbed, orient='index')
     dfbed.columns = ['start', 'stop']
-    #duplicating the dataframe for all chromosomes except the last
-    dfbed = pd.concat([dfbed]*(chrom_num-1))
+    #list for chromosome names
+    l=[]
+    if chrom_num == 1:
+        df=dfbed
+        #defining chromosom names
+        for i in range(int(seq_per_chrom)):
+            l.append(str(chrom + str(chrom_num)))
+    else:
+        #duplicating the dataframe for all chromosomes except the last
+        dfbed = pd.concat([dfbed]*(chrom_num-1))
+        #creating the locations - last chrom
+        dlast = {}
+        for i in range(0,(seq_last_chrom)):
+            dlast['z_' + str(i)] = [int(window-1)+i*(2*window+21), int(window+1)+i*(2*window+21)]
+        dflast = pd.DataFrame.from_dict(dlast, orient='index')
+        dflast.columns = ['start', 'stop'] 
 
-    #creating the locations - last chrom
-    dlast = {}
-    for i in range(0,(seq_last_chrom)):
-        dlast['z_' + str(i)] = [int(window-1)+i*(2*window+21), int(window+1)+i*(2*window+21)]
-    dflast = pd.DataFrame.from_dict(dlast, orient='index')
-    dflast.columns = ['start', 'stop']    
-
-    #adding the chromosome name to the genomic location
-    if seq_type == 'experimental':
+        #combining the bed locations
+        df = pd.concat([dfbed, dflast])
+    
+        #adding the chromosome name to the genomic location
         l=[]
         for i in range(int(seq_per_chrom)):
             for c in range(int(chrom_num-1)):
-                l.append(str('exp_' + str(c+1)))
+                l.append(str(chrom + str(c+1)))
         l = sorted(l)
-        dfbed['chr'] = l
-    elif seq_type == 'simulated':
-        l=[]
-        for i in range(int(seq_per_chrom)):
-            for c in range(int(chrom_num-1)):
-                l.append(str('sim_' + str(c+1)))
-        l = sorted(l)
-        dfbed['chr'] = l
-    
-    #adding the chromosome name to the genomic location- last chrom
-    if seq_type == 'experimental':
-        l=[]
+        #adding the chromosome name to the genomic location- last chrom
         for i in range(int(seq_last_chrom)):
-            l.append(str('exp_' + str(chrom_num)))
-        l = sorted(l)
-        dflast['chr'] = l
-    elif seq_type == 'simulated':
-        l=[]
-        for i in range(int(seq_last_chrom)):
-            l.append(str('sim_' + str(chrom_num)))
-        l = sorted(l)
-        dflast['chr'] = l
-    
-    #combining the bed locations
-    df = pd.concat([dfbed, dflast])
+            l.append(str(chrom + str(chrom_num)))
+        
+    df['chr'] = l
     df = df[['chr', 'start', 'stop']]
     df['count'] = (np.arange(len(df)))
     df['count'] = (df['count']+1).apply(str)
     df['region_name'] = df['chr'] + ';region_' + df['count']
     df.drop(['count'], axis=1, inplace=True)
+    df = df.sort_values(by=['chr', 'start'])
     #saving the new annotation
     df.to_csv(outdir + '/annotations/' + str(sample) + '_' + seq_type + '_centered.bed', header=None, index=False, sep='\t')
     pull_bed= outdir + '/annotations/' + str(sample) + '_' + seq_type + '_centered.bed'
@@ -508,19 +545,17 @@ def windower(bed, outdir, sample, window, seq_type, ident):
     elif ident==False:
         bed_df = bed_df.loc[:, 0:2]
         bed_df.columns = ['chr', 'start', 'stop']
-        
+
 
     ##redefine mu to get new start and stop coordinates
     bed_df['start_new'] = bed_df.apply(lambda x: round((x['start'] + x['stop'])/2), axis=1)
-
     bed_df['stop_new'] = bed_df.apply(lambda x: x['start_new'] + 1, axis = 1)
 
     ##the -1500 position from 'origin'
     bed_df['start'] = bed_df.apply(lambda x: x['start_new'] - int(window), axis=1)
-
-    ##the 1500 position from the 'origin'
     bed_df['stop'] = bed_df.apply(lambda x: x['stop_new'] + int(window), axis=1)
-
+    
+    bed_df = bed_df.sort_values(by=['chr', 'start'])
     ##saving the new annotation
     if ident == True:
         bed_df.to_csv(outdir + '/annotations/' + sample + '_' + seq_type + '_window.bed', sep='\t',
@@ -530,6 +565,7 @@ def windower(bed, outdir, sample, window, seq_type, ident):
         bed_df.to_csv(outdir + '/annotations/' + sample + '_' + seq_type + '_window.bed', sep='\t',
                     columns=['chr','start','stop'],
                     header = False, index = False)
+
 
 def define_seq_structure(verbose, sequence_num, chrom_num, window):
     '''defines chromosome structuring for generated 'genomes' and bed files'''
@@ -545,14 +581,66 @@ def define_seq_structure(verbose, sequence_num, chrom_num, window):
     #this is to check if there is the correct amount of bases per chromosome
     bscount = base_last_chrom + (base_per_chrom)*(chrom_num-1)
 
-    if verbose == True:
-        print('Individual Sequence Length: ' + str(seq_length))
-        print('Number of Sequences: ' + str(sequence_num)) 
-        print('Number of Chromosomes: ' + str(chrom_num) + '\n')
-        print('Sequences per Chromosome: ' + str(seq_per_chrom))
-        print('Sequences on Last Chromosome: ' + str(seq_last_chrom) + '\n')
-        print('Bases per Chromosome: ' + str(base_per_chrom))
-        print('Bases on Last Chromosome: ' + str(base_last_chrom))
-        print('Total Bases: ' + str(tot_bases))
-        
+#     if verbose == True:
+#         print('Individual Sequence Length: ' + str(seq_length))
+#         print('Number of Sequences: ' + str(sequence_num)) 
+#         print('Number of Chromosomes: ' + str(chrom_num) + '\n')
+#         print('Sequences per Chromosome: ' + str(seq_per_chrom))
+#         print('Sequences on Last Chromosome: ' + str(seq_last_chrom) + '\n')
+#         print('Bases per Chromosome: ' + str(base_per_chrom))
+#         print('Bases on Last Chromosome: ' + str(base_last_chrom))
+#         print('Total Bases: ' + str(tot_bases))
+
     return seq_per_chrom, seq_last_chrom
+
+###################################### Plotting positional bias ######################################
+def plot_positional_bias(outdir, sample, window, mono_probabilities):
+    ##get positions                                                   
+    starting=int(window)
+    stopping=int(window)+1
+    positions = np.arange(-starting,stopping,1)
+
+    ### Line plot for each base on one grid ###
+    plt.figure(figsize=(12,10))
+    gs = plt.GridSpec(1, 1)
+    ax = plt.subplot(gs[0])
+    color_list = ['blue', 'red', 'orange', 'purple']
+    bases=['A','C','G','T']
+
+    aprobs=[]
+    cprobs=[]
+    gprobs=[]
+    tprobs=[]
+    for i in range(len(mono_probabilities)):
+        aprobs.append(mono_probabilities[i][0])
+        cprobs.append(mono_probabilities[i][1])
+        gprobs.append(mono_probabilities[i][2])
+        tprobs.append(mono_probabilities[i][3])
+    probs=[aprobs,cprobs,gprobs,tprobs]
+
+    for i,base in enumerate(bases):
+        ax.plot(positions,probs[i],color=color_list[i], alpha=0.75, label=bases[i])
+
+    ax.set_xlabel('Distance (bp)',fontsize=30,fontweight='bold')
+    ax.set_ylabel('Base Content',fontsize=30,fontweight='bold')
+    plt.xticks(fontsize = 25)
+    plt.yticks(fontsize = 25)
+    plt.legend(bbox_to_anchor=(1.05, 1),fontsize = 25, loc=2, borderaxespad=0.)
+    plt.suptitle(sample, fontsize=40, fontweight='bold')
+    plt.savefig(outdir + '/plots/' + sample + '_BaseDistribution.png',bbox_inches='tight')
+
+    # ## Smooth the frequencies for better visualization ### 
+    plt.figure(figsize=(12,10))
+    gs1 = plt.GridSpec(1, 1)
+    ax1 = plt.subplot(gs1[0])
+
+    for i in range(0,4):
+        smoothed_probs = savgol_filter(tuple(np.array(probs)), 61, 3) # window size 61, polynomial order 3     
+        ax1.plot(positions,smoothed_probs[i],color=color_list[i], alpha=0.75, label=bases[i])
+    ax1.set_xlabel('Distance (bp)',fontsize=30,fontweight='bold')
+    ax1.set_ylabel('Base Content',fontsize=30,fontweight='bold')
+    plt.xticks(fontsize = 25)
+    plt.yticks(fontsize = 25)
+    plt.legend(bbox_to_anchor=(1.05, 1),fontsize = 25, loc=2, borderaxespad=0.)
+    plt.suptitle(sample, fontsize=40, fontweight='bold')
+    plt.savefig(outdir + '/plots/' + sample + '_SmoothedBaseDistribution.png',bbox_inches='tight')

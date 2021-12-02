@@ -1,50 +1,88 @@
 ######################################### Imports #########################################
 import sys
+from os import path
+import datetime
 from sequence_generator import run_sequence_generator
 from fimo_scanner import run_fimo_scanner
-from md_score import run_md_score
-from md_score_dastk import run_md_score_dastk
-from results import run_results
+from distance_module import run_distance_calculation
 
 ######################################### Run Main #########################################
-def run(outdir, annotation, genome, sample, motifs, background_file=None, pre_scan=None, sequence_num=20000, window=1500, chrom_num=10, threshold_fimo=0.000001, cpus=1, seed=True, experimental_fimo=False, whole_genome_fimo=False, dastk=False, verbose=False):   
- #     #print("--------------Check needed modules---------------\npython/3.6.3\nbedtools/2.25.0\nsamtools/1.8\nmeme/5.0.3") Change default seq num to be len(annotation)
-    #actually check here and if not present- exit
+def run(verbose, outdir, sample, genome, annotation, 
+        sequence_num, chrom_num, motifs, background_file, seed, cpus=1, window=1500,
+        mononucleotide_generation=False, dinucleotide_generation=True, skip_simulated_fimo=False,
+        experimental_fimo=False, pre_scan=None,
+        threshold_fimo='1e-5'): 
+#################################### Sequence Generation ####################################
     if verbose == True:
         print('--------------Generating Sequences--------------')
-    run_sequence_generator(verbose=verbose, outdir=outdir, sample=sample,
-                           sequence_num=sequence_num, chrom_num=chrom_num, window=window,
-                           genome=genome, annotation=annotation, seed=seed,
-                           experimental_fimo=experimental_fimo, whole_genome_fimo=whole_genome_fimo)
-
+        print('Start time: %s' % str(datetime.datetime.now()))
+    run_sequence_generator(verbose=verbose, 
+                           outdir=outdir, sample=sample, genome=genome,
+                           annotation=annotation, cpus=cpus, seed=seed,
+                           sequence_num=sequence_num, chrom_num=chrom_num,
+                           window=window, 
+                           mononucleotide_generation=mononucleotide_generation,
+                           dinucleotide_generation=dinucleotide_generation,
+                           experimental_fimo=experimental_fimo, pre_scan=pre_scan)
+    if verbose == True:
+        print('--------------Sequence Generation Complete--------------')
+        print('Stop time: %s' % str(datetime.datetime.now()))
+######################################### FIMO Scan ######################################### 
     if verbose == True:
         print('--------------Running FIMO Scan--------------')
-    run_fimo_scanner(verbose=verbose, outdir=outdir, sample=sample,
-                           cpus=cpus, motifs=motifs, threshold_fimo=threshold_fimo,
-                           background_file=background_file, genome=genome,
-                           experimental_fimo=experimental_fimo, whole_genome_fimo=whole_genome_fimo)
+        print('Start time: %s' % str(datetime.datetime.now()))  
     
-    if verbose == True: 
-        print('--------------Calculating MD-Scores -New method --------------')
-    run_md_score(verbose=verbose, outdir=outdir, sample=sample, window=window, cpus=cpus,
-                experimental_fimo=experimental_fimo)
+    ###Dinucleotide simulated scan
+    if skip_simulated_fimo == True:
+        if verbose == True:
+            print('Not performing dinucleotide simulated sequence FIMO scan.')
+    elif dinucleotide_generation==True:
+        run_fimo_scanner(verbose=verbose, outdir=outdir, sample=sample, cpus=cpus, motifs=motifs,
+                         threshold_fimo=threshold_fimo, background_file=background_file, 
+                         seq_type='simulated')
+    else:
+        if verbose == True:
+            print('Skipping dinucleotide simulated sequence FIMO scan.')
+            
+    ###Mononucleotide simulated scan
+    if skip_simulated_fimo == True:
+        if verbose == True:
+            print('Not performing mononucleotide simulated sequence FIMO scan.')
+    elif mononucleotide_generation == True:
+        run_fimo_scanner(verbose=verbose, outdir=outdir, sample=sample, cpus=cpus, motifs=motifs,
+                         threshold_fimo=threshold_fimo, background_file=background_file, 
+                         seq_type='mononucleotide_simulated')
+    else:
+        if verbose == True:
+            print('Skipping mononucleotide simulated sequence FIMO scan.')
     
-    if dastk == True:
-        if verbose == True: 
-            print('--------------Calculating MD-Scores -DAStk method --------------')
-        run_md_score_dastk(verbose=verbose, window=window, cpus=cpus, outdir=outdir, sample=sample, 
-                           experimental_fimo=experimental_fimo)
-    
+    ###Experimental scan
+    if pre_scan is not None:
+            if verbose==True:
+                print('Skipping experimental scan to use pre-scanned set of bedfiles.')
+                print('Please verify that the pre-scanned experimental set (ie a whole-genome scan) uses the same fimo parameters (background/threshold) as the simulated sets and motif hits are in bedfile format.')           
+    elif experimental_fimo == True:
+        run_fimo_scanner(verbose=verbose, outdir=outdir, sample=sample, cpus=cpus, motifs=motifs,
+                         threshold_fimo=threshold_fimo, background_file=background_file, 
+                         seq_type='experimental')
+    else:
+        if verbose == True:
+            print('Skipping experimental sequence FIMO scan.')
+   
     if verbose == True:
-        print('--------------Combining results and plotting-------------')
-    run_results(verbose=verbose, outdir=outdir, sample=sample, window=window)
- 
-    print('done')
-    sys.exit(0)
-    
-
-    
-    
-    
-    
-    
+        print('--------------FIMO Scan(s) Complete--------------')
+        print('Stop time: %s' % str(datetime.datetime.now()))        
+######################################## Distance Calculation ######################################### 
+    if verbose == True: 
+        print('--------------Calculating Distances --------------')
+    if mononucleotide_generation == True:
+        run_distance_calculation(verbose=verbose, outdir=outdir,annotation=annotation, sample=sample, window=window, 
+                             cpus=cpus, seq_type='mononucleotide_simulated', pre_scan=pre_scan)                      
+    if dinucleotide_generation == True:
+        run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
+                             cpus=cpus, seq_type='simulated', pre_scan=pre_scan)
+    if experimental_fimo == True:
+        run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
+                             cpus=cpus, seq_type='experimental', pre_scan=pre_scan) 
+                      
+                      
