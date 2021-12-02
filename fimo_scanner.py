@@ -156,7 +156,7 @@ def fimotobed(verbose, outdir, seq_type):
                 df = df[['sequence_name','start', 'stop', 'motif_id','score', 'strand','identifier', 'motif_region_name']]
                 df['start'] = df['start'].astype(int) 
                 df['stop'] = df['stop'].astype(int)
-                df = df.sort_values(by=['chr', 'start'])
+                df = df.sort_values(by=['sequence_name', 'start'])
                 df.to_csv(outdir + '/motifs/' + seq_type + '/' + motif_name + '.sorted.bed', sep='\t', header=None, index=False)
                 
 def identifier(row):
