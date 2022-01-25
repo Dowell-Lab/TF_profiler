@@ -36,7 +36,7 @@ def run_fimo_scanner(verbose, outdir, sample, cpus, motifs,
         print("----------------Convert Simulated FIMO to Bed Format-----------------------")
     fimotobed(verbose, outdir, seq_type=seq_type)
     if verbose == True: 
-        print("Bed file columns: ['chr','start', 'stop', 'motif_id','score', 'strand','identifier', 'motif_region_name']")
+        print("Bed file columns: ['sequence_name','start', 'stop','score', 'strand', 'motif_region_name']")
         stop_time = int(time.time())
         print("The scan for the " + seq_type + " genome is complete.")
         print('Stop time: %s' % str(datetime.datetime.now()))
@@ -106,8 +106,6 @@ def get_gc(verbose, outdir, sample, motifs, motif_list, alphabet=['A','C','G','T
                     gc += base[alphabet.index('G')]
 
                 gc = gc/float(len(PSSM))
-                if verbose == True:
-                    print('Percent GC content for ' + motif + ' is ' + str(gc))
             gc_out[motif] = motif,gc,(len(PSSM))
 
             df_gc_out = pd.DataFrame.from_dict(gc_out)
@@ -125,7 +123,7 @@ def scanner(motif_list, inputs):
     fasta = outdir + '/generated_sequences/' + sample + '_' + seq_type + '.fa'
 
     if verbose == True:
-        fimo_verbosity = '--verbosity 2 '
+        fimo_verbosity = '--verbosity 1 ' ##change back to 2 eventually
     else:
         fimo_verbosity = '--verbosity 1 '
 
@@ -147,18 +145,12 @@ def fimotobed(verbose, outdir, seq_type):
                 if verbose == True:
                     print('Skipping ' + motif_name + ' -no motif hits.')
             else:
-                df = df.sort_values('sequence_name').reset_index()
-                df['identifier'] = df.apply(lambda row: identifier(row), axis=1)
+                df = df.sort_values(by=['sequence_name', 'start']).reset_index()
+                df['start'] = df['start'].astype(int) 
+                df['stop'] = df['stop'].astype(int)
                 df['count'] = (np.arange(len(df)))
                 df['count'] = (df['count']+1).apply(str)
                 df['motif_region_name'] = df['sequence_name'] + ';motif_' + df['count']
                 df.drop(['count'], axis=1, inplace=True)
-                df = df[['sequence_name','start', 'stop', 'motif_id','score', 'strand','identifier', 'motif_region_name']]
-                df['start'] = df['start'].astype(int) 
-                df['stop'] = df['stop'].astype(int)
-                df = df.sort_values(by=['sequence_name', 'start'])
+                df = df[['sequence_name','start', 'stop','score', 'strand', 'motif_region_name']]
                 df.to_csv(outdir + '/motifs/' + seq_type + '/' + motif_name + '.sorted.bed', sep='\t', header=None, index=False)
-                
-def identifier(row):
-    ident= str(row['sequence_name']) + ':' + str(row['start']) + '-' + str(row['stop']) + '_' + str(row['strand'] + ';' + str(row['score']) + ';' + str(row['motif_id']))
-    return ident

@@ -72,17 +72,17 @@ def run(verbose, outdir, sample, genome, annotation,
     if verbose == True:
         print('--------------FIMO Scan(s) Complete--------------')
         print('Stop time: %s' % str(datetime.datetime.now()))        
-######################################## Distance Calculation ######################################### 
-    if verbose == True: 
-        print('--------------Calculating Distances --------------')
-    if mononucleotide_generation == True:
-        run_distance_calculation(verbose=verbose, outdir=outdir,annotation=annotation, sample=sample, window=window, 
-                             cpus=cpus, seq_type='mononucleotide_simulated', pre_scan=pre_scan)                      
-    if dinucleotide_generation == True:
-        run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
-                             cpus=cpus, seq_type='simulated', pre_scan=pre_scan)
-    if experimental_fimo == True:
-        run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
-                             cpus=cpus, seq_type='experimental', pre_scan=pre_scan) 
+# # ######################################## Distance Calculation ######################################### 
+# #     if verbose == True: 
+# #         print('--------------Calculating Distances --------------')
+# #     if mononucleotide_generation == True:
+# #         run_distance_calculation(verbose=verbose, outdir=outdir,annotation=annotation, sample=sample, window=window, 
+# #                              cpus=cpus, seq_type='mononucleotide_simulated', pre_scan=pre_scan)                      
+# #     if dinucleotide_generation == True:
+# #         run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
+# #                              cpus=cpus, seq_type='simulated', pre_scan=pre_scan)
+# #     if experimental_fimo == True:
+# #         run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
+# #                              cpus=cpus, seq_type='experimental', pre_scan=pre_scan) 
                       
                       

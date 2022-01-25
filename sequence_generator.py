@@ -28,7 +28,7 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
     if chrom_num is not None:
         chrom_num = int(chrom_num)
     else:
-        chrom_num = int(math.ceil(sequence_num*(window*2+21)/1150000))
+        chrom_num = int(math.ceil(sequence_num*(window*2+21)/1150000)) #11500000
         if verbose == True:
             print('The 10% of the average size of a human chromosome is ~11,500,000 bases.')
             print('Therefore, we are generating ' + str(chrom_num) + ' artificial chromosomes.')
@@ -41,7 +41,7 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
         print('--------------Expanding Windows and Extracting Sequences---------------')
     window_annotation(verbose, annotation=annotation, 
                       outdir=outdir, sample=sample, window=window)
-    get_sequences(verbose, genome=genome, outdir=outdir, sample=sample)
+    get_sequences(verbose, genome=genome, outdir=outdir, sample=sample, plot_dinucleotide=False)
     ls = list_sequences(outdir=outdir, sample=sample)
 
     if dinucleotide_generation == False and mononucleotide_generation == False:
@@ -73,7 +73,7 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
                     window=window, sequence_num=sequence_num, chrom_num=chrom_num, seq_type='simulated')
 
         get_sequences(verbose=True, genome=(outdir + '/generated_sequences/' + str(sample) + '_simulated.fa'), 
-                      outdir=outdir, sample='dinucleotide_base_composition')
+                      outdir=outdir, sample=sample, plot_dinucleotide=True)
         dbls = list_sequences(outdir=outdir, sample='dinucleotide_base_composition')
         mono_probabilities= mono_probability_counter(ls=dbls, window=window, outdir=outdir, sample='dinucleotide_base_composition')
         plot_positional_bias(outdir=outdir, sample='dinucleotide_base_composition', window=window, mono_probabilities=mono_probabilities)
@@ -119,7 +119,7 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
     if experimental_fimo == True and pre_scan is None:
         if verbose == True:
             print('-----------Formating Experimental Sequences for FIMO Scan--------------------')
-        chrom_num_exp = int(math.ceil(len(ls)*(window*2+21)/11500000))
+        chrom_num_exp = int(math.ceil(len(ls)*(window*2+21)/1150000))
         write_fasta(verbose, generated_sequences=ls, sample=sample, outdir=outdir, 
                     window=window, sequence_num=len(ls), chrom_num=chrom_num_exp, seq_type='experimental')
         if verbose == True:
@@ -224,31 +224,28 @@ def window_annotation(verbose, annotation, outdir, sample, window):
     else:
         if verbose == True:
             print(outdir + '/plots exists.')  
-    windower(bed=annotation, outdir=outdir, sample=sample, window=int(window), seq_type='experimental', ident=False)
+    windower(bed=annotation, outdir=outdir, sample=sample, window=int(window), spef_dir='/temp/', seq_type='experimental', ident=False)
 
-def get_sequences(verbose, genome, outdir, sample):
+def get_sequences(verbose, genome, outdir, sample, plot_dinucleotide):
     '''This function pulls the sequences out of the windowed annotation file and outputs them in 
     generated_sequences for further use'''
     
-    if sample=='dinucleotide_base_composition':
+    if plot_dinucleotide==True:
         annotation_file=outdir + '/annotations/' + sample + '_simulated_window.bed'
+        os.system('bedtools getfasta -fi ' + genome + 
+          ' -bed ' + annotation_file + 
+          ' -fo ' + outdir + '/temp/dinucleotide_base_composition_window_sequences.fa')
     else:
-        annotation_file=outdir + '/annotations/' + sample + '_experimental_window.bed'   
-    
-    if (path.exists(outdir + '/temp/' + sample + '_window_sequences.fa') == True):
-        if verbose==True:
-            print('Experimental sequences are already extracted with bedtools.')
-    else:
+        annotation_file=outdir + '/temp/' + sample + '_experimental_window.bed'   
         os.system('bedtools getfasta -fi ' + genome + 
                   ' -bed ' + annotation_file + 
                   ' -fo ' + outdir + '/temp/' + sample + '_window_sequences.fa')
-
-    if (path.exists(outdir + '/temp/' + sample + '_window_sequences.fa') == False):
-        print('Extracted experimental sequences failed. Make sure bedtools/2.25.0 is installed.')
-        sys.exit(1)
-    else:
-        if verbose == True:
-            print('Extracted Experimental Sequences Output: ' + outdir + '/temp/' + sample + '_window_sequences.fa')
+        if (path.exists(outdir + '/temp/' + sample + '_window_sequences.fa') == False):
+            print('Extracted experimental sequences failed. Make sure bedtools/2.25.0 is installed.')
+            sys.exit(1)
+        else:
+            if verbose == True:
+                print('Extracted Experimental Sequences Output: ' + outdir + '/temp/' + sample + '_window_sequences.fa')
 
 def list_sequences(outdir, sample):
     '''This function strings experimental sequences together in a list'''
@@ -389,9 +386,8 @@ def mono_probability_counter(ls, window, outdir, sample):
         ll[i] = [x / (sum(ll[i])) for x in ll[i]]
     if sample == 'dinucleotide_base_composition':
         print('Calculating positional base composition based on dinucleotide generated sequences.')
-    else:
-        base_df = pd.DataFrame.from_records(ll, columns=['A','C','G','T'])
-        base_df.to_csv(outdir + '/generated_sequences/' + sample +'_mononucleotide_probabilites.tsv', sep='\t', index=False)
+    base_df = pd.DataFrame.from_records(ll, columns=['A','C','G','T'])
+    base_df.to_csv(outdir + '/generated_sequences/' + sample +'_mononucleotide_probabilites.tsv', sep='\t', index=False)
     return ll
 
 def mono_sequence_generator(rs_list, inputs):
@@ -449,7 +445,7 @@ def write_fasta(verbose, generated_sequences, sample, outdir, window, sequence_n
     df.columns = range(df.shape[1])
     df = df.stack()
     df = pd.DataFrame(df).reset_index(drop=True)
-    return df.to_csv(outdir + '/generated_sequences/' + str(sample) + '_' + seq_type + '.fa', header=None, index=False, sep='\t')
+    df.to_csv(outdir + '/generated_sequences/' + str(sample) + '_' + seq_type + '.fa', header=None, index=False, sep='\t')
 
 def index_and_chrm_sizes(verbose, outdir, sample, seq_type):
     os.system('samtools faidx ' + outdir + '/generated_sequences/' + sample + '_' + seq_type + '.fa')
@@ -533,10 +529,10 @@ def generate_bed(verbose, outdir, sample, sequence_num, chrom_num, window, annot
     #saving the new annotation
     df.to_csv(outdir + '/annotations/' + str(sample) + '_' + seq_type + '_centered.bed', header=None, index=False, sep='\t')
     pull_bed= outdir + '/annotations/' + str(sample) + '_' + seq_type + '_centered.bed'
-    windower(bed=pull_bed, outdir=outdir, sample=sample, window=window, seq_type=seq_type, ident=True)
+    windower(bed=pull_bed, outdir=outdir, sample=sample, window=window, spef_dir='/annotations/', seq_type=seq_type, ident=True)
 
 ######################################### Functions Called by Other Functions #########################################    
-def windower(bed, outdir, sample, window, seq_type, ident):
+def windower(bed, outdir, sample, window, seq_type, spef_dir, ident):
     '''this function windows bedfiles'''
     bed_df = pd.read_csv(bed, sep ='\t',header=None)
     if ident == True:
@@ -556,13 +552,15 @@ def windower(bed, outdir, sample, window, seq_type, ident):
     bed_df['stop'] = bed_df.apply(lambda x: x['stop_new'] + int(window), axis=1)
     
     bed_df = bed_df.sort_values(by=['chr', 'start'])
+    bed_df = bed_df[bed_df['start'] > 0]
     ##saving the new annotation
+    
     if ident == True:
-        bed_df.to_csv(outdir + '/annotations/' + sample + '_' + seq_type + '_window.bed', sep='\t',
+        bed_df.to_csv(outdir + spef_dir + sample + '_' + seq_type + '_window.bed', sep='\t',
                 columns=['chr','start','stop', 'region_name'],
                 header = False, index = False)
     elif ident == False:
-        bed_df.to_csv(outdir + '/annotations/' + sample + '_' + seq_type + '_window.bed', sep='\t',
+        bed_df.to_csv(outdir + spef_dir + sample + '_' + seq_type + '_window.bed', sep='\t',
                     columns=['chr','start','stop'],
                     header = False, index = False)
 
