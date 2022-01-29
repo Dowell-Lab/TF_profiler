@@ -9,10 +9,6 @@ import multiprocessing
 from functools import partial
 import numpy as np
 import pandas as pd
-
-import warnings
-from pandas.core.common import SettingWithCopyWarning
-warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 ######################################### MD Score Main #########################################
 def run_distance_calculation(verbose, outdir, sample, annotation, window, cpus, seq_type, pre_scan):
     if verbose==True:
@@ -24,7 +20,7 @@ def run_distance_calculation(verbose, outdir, sample, annotation, window, cpus, 
                                                  seq_type=seq_type)
     if verbose == True: 
         print('--------------Beginning Distance Calculation---------------')
-        print('Initializing ' + str(cpus) + ' threads to calculate MD Scores.')
+        print('Initializing ' + str(cpus) + ' threads to calculate distances from mu.')
         start_time = int(time.time())
         print('Start time: %s' % str(datetime.datetime.now()))
 
@@ -37,7 +33,7 @@ def run_distance_calculation(verbose, outdir, sample, annotation, window, cpus, 
         pool.close()
         pool.join()
         distance_df = pd.concat(distance_dfs, axis=0)
-        distance_df.to_csv(outdir + '/distances/' + seq_type + '_motif_scores/' + tf +'_distances.txt',
+        distance_df.to_csv(outdir + '/distances/' + seq_type + '/' + tf +'_distances.txt',
                           sep='\t')
     if verbose == True:
         print("---------Distance Calculation Complete----------")
@@ -49,13 +45,13 @@ def md_dirs(verbose, outdir, seq_type):
     if (path.exists(outdir + '/distances') == False):
         os.system('mkdir -p ' + outdir + '/distances') 
     try:
-        os.system('mkdir -p ' + outdir + '/distances/' + seq_type + '_motif_scores')
+        os.system('mkdir -p ' + outdir + '/distances/' + seq_type)
     except OSError:
-        print ('Creation of the directory %s failed' % outdir + '/distances/' + seq_type + '_motif_scores')
+        print ('Creation of the directory %s failed' % outdir + '/distances/' + seq_type)
         sys.exit(1)
     else:
         if verbose == True:
-            print(outdir + '/distances/' + seq_type + '_motif_scores exists.')
+            print(outdir + '/distances/' + seq_type + ' exists.')
 
 def get_scanned_tfs(verbose, outdir, sample, seq_type):
     tf_list = []
@@ -117,9 +113,9 @@ def read_motif(verbose, outdir, pre_scan, chr_list, seq_type, tf):
     else:
         motif_file = outdir + '/motifs/' + seq_type + '/' + tf + '.sorted.bed'
         motif_df = pd.read_csv(motif_file, sep='\t', header=None)
-        motif_df = motif_df[[0,1,2,4,7]]
-        motif_df.columns = ['chr','start', 'stop', 'score', 'motif_id']
-#         motif_df.columns = ['chr','start', 'stop', 'score', 'strand', 'motif_id'] ##in the process of changing fimo output
+#         motif_df = motif_df[[0,1,2,4,7]]
+#         motif_df.columns = ['chr','start', 'stop', 'score', 'motif_id']
+        motif_df.columns = ['chr','start', 'stop', 'score', 'strand', 'motif_id'] ##in the process of changing fimo output
     
     motif_df['center'] = round((motif_df['stop'] + motif_df['start'])/2)
     motif_df = motif_df.sort_values(by='score', ascending=False)

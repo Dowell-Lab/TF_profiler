@@ -5,6 +5,7 @@ import datetime
 from sequence_generator import run_sequence_generator
 from fimo_scanner import run_fimo_scanner
 from distance_module import run_distance_calculation
+from scoring_module import run_scoring_module
 
 ######################################### Run Main #########################################
 def run(verbose, outdir, sample, genome, annotation, 
@@ -12,7 +13,7 @@ def run(verbose, outdir, sample, genome, annotation,
         mononucleotide_generation=False, dinucleotide_generation=True, skip_simulated_fimo=False,
         experimental_fimo=False, pre_scan=None,
         threshold_fimo='1e-5'): 
-#################################### Sequence Generation ####################################
+################################## Sequence Generation ####################################
     if verbose == True:
         print('--------------Generating Sequences--------------')
         print('Start time: %s' % str(datetime.datetime.now()))
@@ -72,17 +73,29 @@ def run(verbose, outdir, sample, genome, annotation,
     if verbose == True:
         print('--------------FIMO Scan(s) Complete--------------')
         print('Stop time: %s' % str(datetime.datetime.now()))        
-# # ######################################## Distance Calculation ######################################### 
-# #     if verbose == True: 
-# #         print('--------------Calculating Distances --------------')
-# #     if mononucleotide_generation == True:
-# #         run_distance_calculation(verbose=verbose, outdir=outdir,annotation=annotation, sample=sample, window=window, 
-# #                              cpus=cpus, seq_type='mononucleotide_simulated', pre_scan=pre_scan)                      
-# #     if dinucleotide_generation == True:
-# #         run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
-# #                              cpus=cpus, seq_type='simulated', pre_scan=pre_scan)
-# #     if experimental_fimo == True:
-# #         run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
-# #                              cpus=cpus, seq_type='experimental', pre_scan=pre_scan) 
-                      
+######################################## Distance Calculation ######################################### 
+    if verbose == True: 
+        print('--------------Calculating Distances--------------')
+    if mononucleotide_generation == True:
+        run_distance_calculation(verbose=verbose, outdir=outdir,annotation=annotation, sample=sample, window=window, 
+                             cpus=cpus, seq_type='mononucleotide_simulated', pre_scan=pre_scan)                      
+    if dinucleotide_generation == True:
+        run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
+                             cpus=cpus, seq_type='simulated', pre_scan=pre_scan)
+    if experimental_fimo == True:
+        run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
+                             cpus=cpus, seq_type='experimental', pre_scan=pre_scan) 
+
+######################################## Scoring Module ######################################### 
+    if verbose == True: 
+        print('--------------Scoring Motif Displacement--------------')
+    if mononucleotide_generation == True:
+        run_scoring_module(verbose=verbose, outdir=outdir,sample=sample, window=window,
+                           seq_type='mononucleotide_simulated')                      
+    if dinucleotide_generation == True:
+        run_scoring_module(verbose=verbose, outdir=outdir,sample=sample, window=window,
+                           seq_type='simulated')  
+    if experimental_fimo == True:
+        run_scoring_module(verbose=verbose, outdir=outdir,sample=sample, window=window,
+                           seq_type='experimental')
                       
