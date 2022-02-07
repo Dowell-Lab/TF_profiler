@@ -13,34 +13,43 @@ import numpy as np
 
 ######################################### Sequence Generator Main #########################################
 def run_fimo_scanner(verbose, outdir, sample, cpus, motifs, 
-                     threshold_fimo, background_file, seq_type):
+                     threshold_fimo, background_file, rerun, seq_type):
     
     fimo_dirs(verbose, outdir=outdir, seq_type=seq_type)
-    if verbose == True: 
-        print("---------Calculating GC Content of Motifs from Motif Database (.meme file)----------")
     motif_list = fimo_motif_names(verbose=verbose,motifs=motifs)
-    get_gc(verbose, outdir=outdir, sample=sample, motifs=motifs, motif_list=motif_list, alphabet=['A','C','G','T'])
+    if rerun == True:
+        scanned_motif_list=check_scanned_motifs(verbose=verbose, outdir=outdir, sample=sample, seq_type=seq_type)
+        mset = set(motif_list)
+        sset = set(scanned_motif_list)
+        motif_list=list(mset.difference(sset))
+        if verbose==True:
+            print(str(len(sset)) + ' motifs were previously scanned.')
+            print('Continuing scan for ' + str(len(motif_list)) + ' motifs.')
     
-    if verbose == True: 
-        print("---------FIMO Scan: Identifying Locations of Motif Hits -------------")
-        print("This scan is for the " + seq_type + " genome.")
-        print('Initializing ' + str(cpus) + ' cpus to run FIMO scan.')
-        print('Start time: %s' % str(datetime.datetime.now()))
-        start_time = int(time.time())
-    seq_type=seq_type
-    pool = multiprocessing.Pool(cpus)
-    results = pool.map(partial(scanner, 
-                               inputs=[verbose, outdir, sample, motifs, threshold_fimo, background_file, seq_type]), motif_list)
-    if verbose == True:
-        print('FIMO scan complete at: %s' % str(datetime.datetime.now()))
-        print("----------------Convert Simulated FIMO to Bed Format-----------------------")
-    fimotobed(verbose, outdir, seq_type=seq_type)
-    if verbose == True: 
-        print("Bed file columns: ['sequence_name','start', 'stop','score', 'strand', 'motif_region_name']")
-        stop_time = int(time.time())
-        print("The scan for the " + seq_type + " genome is complete.")
-        print('Stop time: %s' % str(datetime.datetime.now()))
-        print("Total Run time :", (stop_time-start_time)/3600, " hrs")
+    if len(motif_list) == 0:
+        print('There are no motifs to be scanned in this meme file.')
+    else:
+        if verbose == True: 
+            print("---------Calculating GC Content of Motifs from Motif Database (.meme file)----------")
+        get_gc(verbose, outdir=outdir, sample=sample, motifs=motifs, motif_list=motif_list, alphabet=['A','C','G','T'])
+        if verbose == True: 
+            print("---------FIMO Scan: Identifying Locations of Motif Hits -------------")
+            print("This scan is for the " + seq_type + " genome.")
+            print('Initializing ' + str(cpus) + ' cpus to run FIMO scan.')
+            print('Start time: %s' % str(datetime.datetime.now()))
+            start_time = int(time.time())
+        seq_type=seq_type
+        pool = multiprocessing.Pool(cpus)
+        results = pool.map(partial(scanner, 
+                                   inputs=[verbose, outdir, sample, motifs, threshold_fimo, background_file, seq_type]), motif_list)
+        if verbose == True:
+            print('FIMO scan complete at: %s' % str(datetime.datetime.now()))
+        if verbose == True: 
+            print("Bed file columns: ['sequence_name','start', 'stop','score', 'strand', 'motif_region_name']")
+            stop_time = int(time.time())
+            print("The scan for the " + seq_type + " genome is complete.")
+            print('Stop time: %s' % str(datetime.datetime.now()))
+            print("Total Run time :", (stop_time-start_time)/3600, " hrs")
 
 ######################################### FIMO Functions #########################################
 
@@ -79,6 +88,17 @@ def fimo_motif_names(verbose, motifs):
     if verbose == True:
         print('There are ' + str(len(motif_list)) + " motifs in this meme file.")
     return motif_list
+
+def check_scanned_motifs(verbose, outdir, sample, seq_type):
+    scanned_motif_list = []
+    motif_path = outdir + '/motifs/' + seq_type + '/*'
+    motif_filenames = glob.glob(motif_path)
+    motif_count = len(motif_filenames)
+    for filename in motif_filenames:
+        filename_no_path = filename.split('/')[-1]
+        filename_no_path=filename_no_path.replace('.sorted.bed','')
+        scanned_motif_list.append(filename_no_path)
+    return scanned_motif_list
 
 def get_gc(verbose, outdir, sample, motifs, motif_list, alphabet=['A','C','G','T']):
     '''Obtain a pssm model from a meme formatted database file.'''
@@ -132,25 +152,22 @@ def scanner(motif_list, inputs):
     else:
         os.system('fimo ' + fimo_verbosity + '--thresh ' + str(threshold_fimo) + ' --motif ' + motif_list + ' --oc ' + outdir + '/temp/' + seq_type + '_fimo_out/' + motif_list + ' ' + motifs + ' ' + fasta)
         
-def fimotobed(verbose, outdir, seq_type):
-    motif_dirs = glob.glob(outdir + '/temp/' + seq_type + '_fimo_out/*')
-    for motif_dir in motif_dirs:
-        if path.isdir(motif_dir):
-            motif_name = motif_dir.split('/')[-1]
-            df = pd.read_csv('%s/fimo.tsv' % (motif_dir), sep ='\t')
-            if verbose == True:
-                print("Post-processing FIMO output for %s" % motif_name)
-            df.drop(df.tail(3).index,inplace=True)
-            if df.empty == True:
-                if verbose == True:
-                    print('Skipping ' + motif_name + ' -no motif hits.')
-            else:
-                df = df.sort_values(by=['sequence_name', 'start']).reset_index()
-                df['start'] = df['start'].astype(int) 
-                df['stop'] = df['stop'].astype(int)
-                df['count'] = (np.arange(len(df)))
-                df['count'] = (df['count']+1).apply(str)
-                df['motif_region_name'] = df['sequence_name'] + ';motif_' + df['count']
-                df.drop(['count'], axis=1, inplace=True)
-                df = df[['sequence_name','start', 'stop','score', 'strand', 'motif_region_name']]
-                df.to_csv(outdir + '/motifs/' + seq_type + '/' + motif_name + '.sorted.bed', sep='\t', header=None, index=False)
+# def fimotobed(verbose, outdir, seq_type, motif_list):
+    #formating output
+    df = pd.read_csv(outdir + '/temp/' + seq_type + '_fimo_out/'+motif_list+'/fimo.tsv', sep ='\t')
+    if verbose == True:
+        print("Post-processing FIMO output for %s" % motif_list)
+    df.drop(df.tail(3).index,inplace=True)
+    if df.empty == True:
+        if verbose == True:
+            print('Skipping ' + motif_list + ' -no motif hits.')
+    else:
+        df = df.sort_values(by=['sequence_name', 'start']).reset_index()
+        df['start'] = df['start'].astype(int) 
+        df['stop'] = df['stop'].astype(int)
+        df['count'] = (np.arange(len(df)))
+        df['count'] = (df['count']+1).apply(str)
+        df['motif_region_name'] = df['sequence_name'] + ';motif_' + df['count']
+        df.drop(['count'], axis=1, inplace=True)
+        df = df[['sequence_name','start', 'stop','score', 'strand', 'motif_region_name']]
+        df.to_csv(outdir + '/motifs/' + seq_type + '/' + motif_list + '.sorted.bed', sep='\t', header=None, index=False)

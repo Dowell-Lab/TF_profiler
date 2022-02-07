@@ -1,5 +1,6 @@
 ######################################### Imports #########################################
 import os
+from os import stat
 from os import path
 import sys
 import pandas as pd
@@ -12,27 +13,15 @@ import multiprocessing
 import matplotlib.pyplot as plt
 from scipy.signal import savgol_filter
 
+import warnings
+from pandas.core.common import SettingWithCopyWarning
+warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
+
 ######################################### Sequence Generator Main #########################################
 def run_sequence_generator(verbose, outdir, sample, genome, annotation,
                            sequence_num, chrom_num, cpus, seed, window, 
                            mononucleotide_generation, dinucleotide_generation, 
-                           experimental_fimo, pre_scan):
-    if sequence_num is not None:
-        sequence_num = int(sequence_num)
-    else:
-        with open(annotation, 'r') as an:
-            sequence_num = len(an.readlines())
-            if verbose == True:
-                print('There are ' + str(sequence_num) + ' bidirectionals in the annotation file provided.')
-                print(str(sequence_num) + ' sequences will be simulated.')
-    if chrom_num is not None:
-        chrom_num = int(chrom_num)
-    else:
-        chrom_num = int(math.ceil(sequence_num*(window*2+21)/1150000)) #11500000
-        if verbose == True:
-            print('The 10% of the average size of a human chromosome is ~11,500,000 bases.')
-            print('Therefore, we are generating ' + str(chrom_num) + ' artificial chromosomes.')
-
+                           experimental_fimo, pre_scan, rerun):    
     rs_list=set_seed(verbose=verbose, seed=seed, cpus=cpus, sequence_num=sequence_num)
 
     if verbose == True:
@@ -44,11 +33,31 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
     get_sequences(verbose, genome=genome, outdir=outdir, sample=sample, plot_dinucleotide=False)
     ls = list_sequences(outdir=outdir, sample=sample)
 
+    if sequence_num is not None:
+        sequence_num = int(sequence_num)
+    else:
+        sequence_num = int(len(ls))
+        if verbose == True:
+            print('There are ' + str(sequence_num) + ' bidirectionals in the annotation file provided.')
+            print(str(sequence_num) + ' sequences will be simulated.')
+    if chrom_num is not None:
+        chrom_num = int(chrom_num)
+    else:
+        chrom_num = int(math.ceil(sequence_num*(window*2+21)/1150000)) #11500000
+        if verbose == True:
+            print('The 10% of the average size of a human chromosome is ~11,500,000 bases.')
+            print('Therefore, we are generating ' + str(chrom_num) + ' artificial chromosomes.')    
+    
     if dinucleotide_generation == False and mononucleotide_generation == False:
         if verbose == True:
             print('No sequences were simulated. To simulate sequences set dinucleotide_generation or mononucleotide_generation to True.')
 
     if dinucleotide_generation == True:
+#         if rerun == True:
+        #check for files and if they are empty
+        #double check that all simulated sequences were generated
+        #only run functions if files are empty or more sequences are needed
+#         else:
         if verbose == True:
             start_prob = float(time.time())
             print('-----------Calculating Dinucleotide Dependant Base Position Probabilities-------------')
@@ -88,6 +97,11 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
                  window=window, annotation=annotation, seq_type='simulated')
 
     if mononucleotide_generation == True:
+#         if rerun == True:
+        #check for files and if they are empty
+        #double check that all simulated sequences were generated
+        #only run functions if files are empty or more sequences are needed
+#         else:
         if verbose == True:
             start_prob = float(time.time())
             print('-----------Calculating Mononucleotide Dependant Base Position Probabilities-------------')
@@ -117,6 +131,11 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
                  window=window, annotation=annotation, seq_type='mononucleotide_simulated')
 
     if experimental_fimo == True and pre_scan is None:
+#         if rerun == True:
+        #check for files and if they are empty
+        #double check that all simulated sequences were generated
+        #only run functions if files are empty or more sequences are needed
+#         else:
         if verbose == True:
             print('-----------Formating Experimental Sequences for FIMO Scan--------------------')
         chrom_num_exp = int(math.ceil(len(ls)*(window*2+21)/1150000))
@@ -229,23 +248,31 @@ def window_annotation(verbose, annotation, outdir, sample, window):
 def get_sequences(verbose, genome, outdir, sample, plot_dinucleotide):
     '''This function pulls the sequences out of the windowed annotation file and outputs them in 
     generated_sequences for further use'''
-    
     if plot_dinucleotide==True:
         annotation_file=outdir + '/annotations/' + sample + '_simulated_window.bed'
         os.system('bedtools getfasta -fi ' + genome + 
           ' -bed ' + annotation_file + 
           ' -fo ' + outdir + '/temp/dinucleotide_base_composition_window_sequences.fa')
+    if os.stat(outdir + '/temp/dinucleotide_base_composition_window_sequences.fa').st_size == 0:
+        print('Extraction for plotting failed.')
     else:
-        annotation_file=outdir + '/temp/' + sample + '_experimental_window.bed'   
-        os.system('bedtools getfasta -fi ' + genome + 
-                  ' -bed ' + annotation_file + 
-                  ' -fo ' + outdir + '/temp/' + sample + '_window_sequences.fa')
-        if (path.exists(outdir + '/temp/' + sample + '_window_sequences.fa') == False):
-            print('Extracted experimental sequences failed. Make sure bedtools/2.25.0 is installed.')
-            sys.exit(1)
+        if (path.exists(outdir + '/temp/' + sample + '_window_sequences.fa') == False) or (os.stat(outdir + '/temp/' + sample + '_window_sequences.fa').st_size == 0):
+            annotation_file=outdir + '/temp/' + sample + '_experimental_window.bed'   
+            os.system('bedtools getfasta -fi ' + genome + 
+                      ' -bed ' + annotation_file + 
+                      ' -fo ' + outdir + '/temp/' + sample + '_window_sequences.fa')
+            if (path.exists(outdir + '/temp/' + sample + '_window_sequences.fa') == False):
+                print('Extracted experimental sequences failed. Make sure bedtools/2.25.0 is installed.')
+                sys.exit(1)
+            elif os.stat(outdir + '/temp/' + sample + '_window_sequences.fa').st_size == 0:
+                print('Extracted experimental sequences failed. The output file is empty!')
+                sys.exit(1)
+            else:
+                if verbose == True:
+                    print('Extracted Experimental Sequences Output: ' + outdir + '/temp/' + sample + '_window_sequences.fa')
         else:
-            if verbose == True:
-                print('Extracted Experimental Sequences Output: ' + outdir + '/temp/' + sample + '_window_sequences.fa')
+            print('Experimental Sequences were previously extracted.')
+
 
 def list_sequences(outdir, sample):
     '''This function strings experimental sequences together in a list'''

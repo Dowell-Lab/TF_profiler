@@ -29,6 +29,7 @@ if __name__ == "__main__":
     general.add_argument('-o', '--outdir', dest="outdir", help = 'directory for output', metavar="/full/path/to/output", required=True)
     general.add_argument('-s', '--sample', dest="sample", help = 'name of the sample to be run (str)', metavar="name_of_sample", required=True)
     general.add_argument('-c', '--cpus', type=int, dest='cpus', metavar='int', help='number of CPUs for multiprocessing. Default=1', default=1, required=False)
+    general.add_argument('-r', '--rerun',dest="rerun", type=str2bool, nargs='?', const=True, default=False, help = 'if a run was incomplete, add this flag to the original script to pick up where it left off.', metavar="True/False", required=False)
         
     ### Sequence generation options
     sequence_gen.add_argument('-l', '--mononucleotide_generation',dest="mononucleotide_generation", type=str2bool, nargs='?', const=True, default=False, help = 'If False mononucleotide simulated sequences will not be generated. By default these sequences will also be scanned in FIMO unless the skip_simulated_fimo flag is used (Default: False)', metavar="True/False", required=False)
@@ -65,6 +66,6 @@ if __name__ == "__main__":
 main.run(args.verbose, args.outdir, args.sample, args.genome, args.annotation, 
         args.sequence_num, args.chrom_num, args.motifs, args.background_file, args.seed, args.cpus, args.window,
         args.mononucleotide_generation, args.dinucleotide_generation, args.skip_simulated_fimo,
-        args.experimental_fimo, args.pre_scan,
+        args.experimental_fimo, args.pre_scan, args.rerun,
         args.threshold_fimo)
 

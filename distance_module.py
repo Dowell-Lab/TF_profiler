@@ -105,12 +105,12 @@ def read_annotation(verbose, sample, outdir, pre_scan, annotation, seq_type):
     return annotation_df, chr_list
                                                            
 def read_motif(verbose, outdir, pre_scan, chr_list, seq_type, tf):
-    if verbose == True:
-        print('Reading motif file ' + tf + ' and centering regions...')
-        print('THIS ISNT WORKING YET')
     if seq_type == 'experimental' and pre_scan is not None:
         print('Using pre-scan...')
+        print('THIS ISNT WORKING YET')
     else:
+        if verbose == True:
+            print('Reading motif file ' + tf + ' and centering regions...')
         motif_file = outdir + '/motifs/' + seq_type + '/' + tf + '.sorted.bed'
         motif_df = pd.read_csv(motif_file, sep='\t', header=None)
 #         motif_df = motif_df[[0,1,2,4,7]]
