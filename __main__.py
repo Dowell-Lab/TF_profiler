@@ -21,6 +21,7 @@ if __name__ == "__main__":
     general = p.add_argument_group('General Arguments')
     sequence_gen = p.add_argument_group('Sequence Generation Arguments')
     fimo = p.add_argument_group('FIMO Arguments')
+    scoring = p.add_argument_group('Scoring and Statistics Arguments')
     
     #### General options
     general.add_argument('-v', '--verbose',dest="verbose", type=str2bool, nargs='?', const=True, default=False, help = 'will generate verbose output file', metavar="True/False", required=False)
@@ -32,8 +33,8 @@ if __name__ == "__main__":
     general.add_argument('-r', '--rerun',dest="rerun", type=str2bool, nargs='?', const=True, default=False, help = 'if a run was incomplete, add this flag to the original script to pick up where it left off.', metavar="True/False", required=False)
         
     ### Sequence generation options
-    sequence_gen.add_argument('-l', '--mononucleotide_generation',dest="mononucleotide_generation", type=str2bool, nargs='?', const=True, default=False, help = 'If False mononucleotide simulated sequences will not be generated. By default these sequences will also be scanned in FIMO unless the skip_simulated_fimo flag is used (Default: False)', metavar="True/False", required=False)
-    sequence_gen.add_argument('-d', '--dinucleotide_generation',dest="dinucleotide_generation", type=str2bool, nargs='?', const=True, default=True, help = 'If False dinucleotide simulated sequences will not be generated. By default these sequences will also be scanned in FIMO unless the skip_simulated_fimo flag is used (Default: True)', metavar="True/False", required=False) 
+    sequence_gen.add_argument('-l', '--mononucleotide_generation',dest="mononucleotide_generation", type=str2bool, nargs='?', const=True, default=False, help = 'If False mononucleotide simulated sequences will not be generated. By default these sequences will also be scanned in FIMO unless the simulated_pre_scan flag is used pointing to a prescanned directory (Default: False)', metavar="True/False", required=False)
+    sequence_gen.add_argument('-d', '--dinucleotide_generation',dest="dinucleotide_generation", type=str2bool, nargs='?', const=True, default=True, help = 'If False dinucleotide simulated sequences will not be generated. By default these sequences will also be scanned in FIMO unless the simulated_pre_scan flag is used pointing to a prescanned directory (Default: True)', metavar="True/False", required=False) 
     sequence_gen.add_argument('-g', '--genome', dest="genome", help = 'reference genome in fasta format. Genome index must be in the same directory (genome.fa.fai).', metavar="genome.fa", required=True)  
     
     sequence_gen.add_argument('-e', '--seed',dest="seed", default=None, help = 'seed for initializing the random number generator. To set a specific seed -e int. The default is "None" so the seed is based on the clock.', metavar="int", required=False)
@@ -45,7 +46,7 @@ if __name__ == "__main__":
 #     ###FIMO Scanning options
     fimo.add_argument('-p', '--pre_scan', dest="pre_scan", default=None, help = 'directory containing pre-scanned motif hits in bed format over the whole genome obtained using the same fimo parameters (background and threshold) as the simulated dataset. If path is set experimental genome scan will be skipped and pre-scanned motif hits will be used instead.', metavar="/full/path/to/pre-scanned/motifs", required=False)                   
     fimo.add_argument('-x', '--experimental_fimo', dest="experimental_fimo", type=str2bool, nargs='?', const=True, default=False, help = 'will run fimo over only the annotated regions from the experimental dataset. True will increase run time. Recommended if you are only looking at a single dataset. If False, provide destination of the pre-scanned genome using the "--pre_scan" flag. Default: False.', metavar="True/False", required=False)
-    fimo.add_argument('-k', '--skip_simulated_fimo', dest="skip_simulated_fimo", type=str2bool, nargs='?', const=True, default=False, help = 'if True then the fimo scan for the simulated sequence(s) will be skipped', metavar="True/False", required=False)
+    fimo.add_argument('-k', '--simulated_pre_scan', dest="simulated_pre_scan", default=None, help = 'directory containing pre-scanned motif hits in bed format over a simulated dataset obtained using the same fimo parameters (background and threshold) as the experimental dataset. If path is set simulated scan will be skipped and pre-scanned motif hits will be used instead. NOTE: Make sure there are sufficient simulated sequences to match the total number of experimental sequences.', metavar="/full/path/to/pre-scanned/motifs", required=False)
     fimo.add_argument('-m', '--motifs', dest="motifs", help = 'meme file for TFs', metavar="motif_database.meme", required=True)
  
     
@@ -53,19 +54,15 @@ if __name__ == "__main__":
     fimo.add_argument('-b', '--background_file', dest="background_file", help = 'background base composition of a given genome. This flag is HIGHLY recommended. See background options in useful files.', metavar="background.csv", default=None, required=False)    
         ###Can I default in a useful files folder for a certain background?
         
-#     ###Distance
-#     p.add_argument('-q', '--distance', dest="distance", type=str2bool, nargs='?', const=True, default=False, help = 'will calculate distances between a given motif hit and mu. Default: False.', metavar="True/False", required=False)    
-    
-#     ###Scoring
-#     p.add_argument('-j', '--score', dest="score", type=str2bool, nargs='?', const=True, default=False, help = 'will run negative exponential scoring. Default: False.', metavar="True/False", required=False)
-#     p.add_argument('-k', '--dastk', dest="dastk", type=str2bool, nargs='?', const=True, default=False, help = 'will run dastk scoring as well as new scoring method. Default: False.', metavar="True/False", required=False)
-#     #p.add_argument('-q', '--score_distances', dest="score_distances", help='score based on a pre-generated distance file')  
+    ###Distance
+    scoring.add_argument('-u', '--traditional_md', dest="traditional_md", type=str2bool, nargs='?', const=True, default=True, help = 'will calculate md score using traditional method, number of hits within the small window (10 percent of the large window) divided by total hits in the large windiow. Default: True.', metavar="True/False", required=False)    
+
 
     args = p.parse_args()
 
 main.run(args.verbose, args.outdir, args.sample, args.genome, args.annotation, 
         args.sequence_num, args.chrom_num, args.motifs, args.background_file, args.seed, args.cpus, args.window,
-        args.mononucleotide_generation, args.dinucleotide_generation, args.skip_simulated_fimo,
+        args.mononucleotide_generation, args.dinucleotide_generation, args.simulated_pre_scan,
         args.experimental_fimo, args.pre_scan, args.rerun,
-        args.threshold_fimo)
+        args.threshold_fimo, args.traditional_md)
 

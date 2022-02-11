@@ -22,10 +22,7 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
                            sequence_num, chrom_num, cpus, seed, window, 
                            mononucleotide_generation, dinucleotide_generation, 
                            experimental_fimo, pre_scan, rerun):    
-    rs_list=set_seed(verbose=verbose, seed=seed, cpus=cpus, sequence_num=sequence_num)
-
     if verbose == True:
-        print('We are generating ' + str(sequence_num) + ' ' + str(window*2) + ' base long sequences on ' + str(chrom_num) + ' artificial chromosomes.')
         start_time = float(time.time())
         print('--------------Expanding Windows and Extracting Sequences---------------')
     window_annotation(verbose, annotation=annotation, 
@@ -47,6 +44,11 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
         if verbose == True:
             print('The 10% of the average size of a human chromosome is ~11,500,000 bases.')
             print('Therefore, we are generating ' + str(chrom_num) + ' artificial chromosomes.')    
+    
+    if verbose == True:
+        print('We are generating ' + str(sequence_num) + ' ' + str(window*2) + ' base long sequences on ' + str(chrom_num) + ' artificial chromosomes.')
+    
+    rs_list=set_seed(verbose=verbose, seed=seed, cpus=cpus, sequence_num=sequence_num)
     
     if dinucleotide_generation == False and mononucleotide_generation == False:
         if verbose == True:
@@ -253,8 +255,8 @@ def get_sequences(verbose, genome, outdir, sample, plot_dinucleotide):
         os.system('bedtools getfasta -fi ' + genome + 
           ' -bed ' + annotation_file + 
           ' -fo ' + outdir + '/temp/dinucleotide_base_composition_window_sequences.fa')
-    if os.stat(outdir + '/temp/dinucleotide_base_composition_window_sequences.fa').st_size == 0:
-        print('Extraction for plotting failed.')
+        if os.stat(outdir + '/temp/dinucleotide_base_composition_window_sequences.fa').st_size == 0:
+            print('Extraction for plotting failed.')
     else:
         if (path.exists(outdir + '/temp/' + sample + '_window_sequences.fa') == False) or (os.stat(outdir + '/temp/' + sample + '_window_sequences.fa').st_size == 0):
             annotation_file=outdir + '/temp/' + sample + '_experimental_window.bed'   

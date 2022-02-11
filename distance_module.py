@@ -9,7 +9,7 @@ import multiprocessing
 from functools import partial
 import numpy as np
 import pandas as pd
-######################################### MD Score Main #########################################
+######################################### Distance Main #########################################
 def run_distance_calculation(verbose, outdir, sample, annotation, window, cpus, seq_type, pre_scan):
     if verbose==True:
         print('--------------Pulling in Annotation and Getting List of Motifs---------------')
@@ -40,7 +40,7 @@ def run_distance_calculation(verbose, outdir, sample, annotation, window, cpus, 
         stop_time = int(time.time())
         print('Stop time: %s' % str(datetime.datetime.now()))
         print('Total Run time :', (stop_time-start_time)/60, ' minutes')
-######################################### MD Score Functions #########################################
+######################################### Motif Distance Calculation Functions #########################################
 def md_dirs(verbose, outdir, seq_type):
     if (path.exists(outdir + '/distances') == False):
         os.system('mkdir -p ' + outdir + '/distances') 

@@ -42,6 +42,8 @@ def run_fimo_scanner(verbose, outdir, sample, cpus, motifs,
         pool = multiprocessing.Pool(cpus)
         results = pool.map(partial(scanner, 
                                    inputs=[verbose, outdir, sample, motifs, threshold_fimo, background_file, seq_type]), motif_list)
+        pool.close()
+        pool.join()
         if verbose == True:
             print('FIMO scan complete at: %s' % str(datetime.datetime.now()))
         if verbose == True: 
