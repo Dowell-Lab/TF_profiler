@@ -13,11 +13,11 @@ import numpy as np
 
 ######################################### Sequence Generator Main #########################################
 def run_fimo_scanner(verbose, outdir, sample, cpus, motifs, 
-                     threshold_fimo, background_file, rerun, seq_type):
+                     threshold_fimo, background_file, continue_run, seq_type):
     
     fimo_dirs(verbose, outdir=outdir, seq_type=seq_type)
     motif_list = fimo_motif_names(verbose=verbose,motifs=motifs)
-    if rerun == True:
+    if continue_run == True:
         scanned_motif_list=check_scanned_motifs(verbose=verbose, outdir=outdir, sample=sample, seq_type=seq_type)
         mset = set(motif_list)
         sset = set(scanned_motif_list)
@@ -154,8 +154,6 @@ def scanner(motif_list, inputs):
     else:
         os.system('fimo ' + fimo_verbosity + '--thresh ' + str(threshold_fimo) + ' --motif ' + motif_list + ' --oc ' + outdir + '/temp/' + seq_type + '_fimo_out/' + motif_list + ' ' + motifs + ' ' + fasta)
         
-# def fimotobed(verbose, outdir, seq_type, motif_list):
-    #formating output
     df = pd.read_csv(outdir + '/temp/' + seq_type + '_fimo_out/'+motif_list+'/fimo.tsv', sep ='\t')
     if verbose == True:
         print("Post-processing FIMO output for %s" % motif_list)

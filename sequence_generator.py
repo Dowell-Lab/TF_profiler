@@ -19,9 +19,7 @@ warnings.simplefilter(action="ignore", category=SettingWithCopyWarning)
 
 ######################################### Sequence Generator Main #########################################
 def run_sequence_generator(verbose, outdir, sample, genome, annotation,
-                           sequence_num, chrom_num, cpus, seed, window, 
-                           mononucleotide_generation, dinucleotide_generation, 
-                           experimental_fimo, pre_scan, rerun):    
+                           sequence_num, chrom_num, cpus, seed, window):    
     if verbose == True:
         start_time = float(time.time())
         print('--------------Expanding Windows and Extracting Sequences---------------')
@@ -49,105 +47,107 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
         print('We are generating ' + str(sequence_num) + ' ' + str(window*2) + ' base long sequences on ' + str(chrom_num) + ' artificial chromosomes.')
     
     rs_list=set_seed(verbose=verbose, seed=seed, cpus=cpus, sequence_num=sequence_num)
+    return ls, rs_list, sequence_num, chrom_num
     
-    if dinucleotide_generation == False and mononucleotide_generation == False:
-        if verbose == True:
-            print('No sequences were simulated. To simulate sequences set dinucleotide_generation or mononucleotide_generation to True.')
+def run_dinucleotide_generator(verbose, outdir, sample,
+                           sequence_num, chrom_num, cpus, window, ls, rs_list):
+    if verbose == True:
+        start_prob = float(time.time())
+        print('-----------Calculating Dinucleotide Dependant Base Position Probabilities-------------')
+    first_position = first_dinuc(ls=ls, outdir=outdir, sample=sample)
+    position_givenA=conditional_probability_counter(nuc='A', ls=ls, window=window, outdir=outdir, sample=sample)
+    position_givenC=conditional_probability_counter(nuc='C', ls=ls, window=window, outdir=outdir, sample=sample)
+    position_givenG=conditional_probability_counter(nuc='G', ls=ls, window=window, outdir=outdir, sample=sample)
+    position_givenT=conditional_probability_counter(nuc='T', ls=ls, window=window, outdir=outdir, sample=sample)
+    if verbose == True:
+        stop_prob = float(time.time())
+        prob_time = (stop_prob-start_prob)/60
+        print('Probability calculations took ' + str(prob_time) + ' min.') 
+        print('--------------------Generating Dinucleotide Sequences----------------------')
+        print('Initiating ' + str(cpus) + ' cpus.')
+    pool = multiprocessing.Pool(cpus)
+    seqs = pool.map(partial(sequence_generator, 
+                           inputs=[verbose, window, first_position, position_givenA, position_givenC, position_givenG, position_givenT]), rs_list)
+    pool.close()
+    pool.join()
+    seqs=[seq for seqs_per_cpu in seqs for seq in seqs_per_cpu]
+    write_fasta(verbose, generated_sequences=seqs, sample=sample, outdir=outdir, 
+                window=window, sequence_num=sequence_num, chrom_num=chrom_num, seq_type='simulated')
+    if verbose == True:
+        stop_time = float(time.time())
+        seq_time = (stop_time-stop_prob)/60
+        print('Dinucleotide sequence generation took ' + str(seq_time) + ' min.') 
+        print('-----------Indexing Dinucleotide Sequences and Creating Bedfiles--------------------')
+    index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, seq_type='simulated')
+    generate_bed(verbose, outdir=outdir, sample=sample, 
+                 sequence_num=sequence_num, chrom_num=chrom_num, 
+                 window=window, ls=ls, seq_type='simulated')
 
-    if dinucleotide_generation == True:
-#         if rerun == True:
-        #check for files and if they are empty
-        #double check that all simulated sequences were generated
-        #only run functions if files are empty or more sequences are needed
-#         else:
-        if verbose == True:
-            start_prob = float(time.time())
-            print('-----------Calculating Dinucleotide Dependant Base Position Probabilities-------------')
-        first_position = first_dinuc(ls=ls, outdir=outdir, sample=sample)
-        position_givenA=conditional_probability_counter(nuc='A', ls=ls, window=window, outdir=outdir, sample=sample)
-        position_givenC=conditional_probability_counter(nuc='C', ls=ls, window=window, outdir=outdir, sample=sample)
-        position_givenG=conditional_probability_counter(nuc='G', ls=ls, window=window, outdir=outdir, sample=sample)
-        position_givenT=conditional_probability_counter(nuc='T', ls=ls, window=window, outdir=outdir, sample=sample)
-        if verbose == True:
-            stop_prob = float(time.time())
-            prob_time = (stop_prob-start_prob)/60
-            print('Probability calculations took ' + str(prob_time) + ' min.') 
-            print('--------------------Generating Dinucleotide Sequences----------------------')
-            print('Initiating ' + str(cpus) + ' cpus.')
-        pool = multiprocessing.Pool(cpus)
-        seqs = pool.map(partial(sequence_generator, 
-                               inputs=[verbose, window, first_position, position_givenA, position_givenC, position_givenG, position_givenT]), rs_list)
-        pool.close()
-        pool.join()
-        seqs=[seq for seqs_per_cpu in seqs for seq in seqs_per_cpu]
-        write_fasta(verbose, generated_sequences=seqs, sample=sample, outdir=outdir, 
-                    window=window, sequence_num=sequence_num, chrom_num=chrom_num, seq_type='simulated')
+    if verbose == True:
+        print('-----------Plotting positional biases-----------')
+    ###plotting mononucleotide probabilites from the experimental data
+    mono_probabilities=mono_probability_counter(ls=ls, window=window, outdir=outdir, sample=sample)
+    plot_positional_bias(outdir=outdir, sample=sample, window=window, 
+                         base='not_conditional', probabilities=mono_probabilities)
 
-        get_sequences(verbose=True, genome=(outdir + '/generated_sequences/' + str(sample) + '_simulated.fa'), 
-                      outdir=outdir, sample=sample, plot_dinucleotide=True)
-        dbls = list_sequences(outdir=outdir, sample='dinucleotide_base_composition')
-        mono_probabilities= mono_probability_counter(ls=dbls, window=window, outdir=outdir, sample='dinucleotide_base_composition')
-        plot_positional_bias(outdir=outdir, sample='dinucleotide_base_composition', window=window, mono_probabilities=mono_probabilities)
+    ###plotting conditional probabilities from the experimental data
+    bases=['A','C','G','T']
+    conditional_probabilities_list= [position_givenA,position_givenC,position_givenG,position_givenT]
+    for i,conditional_probabilities in enumerate(conditional_probabilities_list):
+        plot_positional_bias(outdir=outdir, sample=sample, window=window,
+                     base=bases[i], probabilities=conditional_probabilities)
 
-        if verbose == True:
-            stop_time = float(time.time())
-            seq_time = (stop_time-stop_prob)/60
-            print('Dinucleotide sequence generation took ' + str(seq_time) + ' min.') 
-            print('-----------Indexing Dinucleotide Sequences and Creating Bedfiles--------------------')
-        index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, seq_type='simulated')
-        generate_bed(verbose, outdir=outdir, sample=sample, sequence_num=sequence_num, chrom_num=chrom_num, 
-                 window=window, annotation=annotation, seq_type='simulated')
+    ###plotting mononucleotide probabilities from the new dinucleotide simulated data
+    get_sequences(verbose=verbose, genome=(outdir + '/generated_sequences/' + str(sample) + '_simulated.fa'), 
+                  outdir=outdir, sample=sample, plot_dinucleotide=True)
+    dbls = list_sequences(outdir=outdir, sample='dinucleotide')
+    mono_probabilities_from_dinucleotide_sequences = mono_probability_counter(ls=dbls, window=window, outdir=outdir,
+                                                 sample='dinucleotide')
+    plot_positional_bias(outdir=outdir, sample='dinucleotide', window=window,
+                         base='not_conditional', probabilities=mono_probabilities_from_dinucleotide_sequences)
+        
+def run_mononucleotide_generator(verbose, outdir, sample,
+                           sequence_num, chrom_num, cpus, window, ls, rs_list):
+    if verbose == True:
+        start_prob = float(time.time())
+        print('-----------Calculating Mononucleotide Dependant Base Position Probabilities-------------')
+    mono_probabilities=mono_probability_counter(ls=ls, window=window, outdir=outdir, sample=sample)
+    plot_positional_bias(outdir=outdir, sample=sample, window=window, 
+                         base='not_conditional', probabilities=mono_probabilities)
+    if verbose == True:
+        stop_prob = float(time.time())
+        prob_time = (stop_prob-start_prob)/60
+        print('Probability calculations took ' + str(prob_time) + ' min.') 
+        print('--------------------Generating Mononucleotide Sequences----------------------')
+        print('Initiating ' + str(cpus) + ' cpus.')
+    pool = multiprocessing.Pool(cpus)
+    seqs = pool.map(partial(mono_sequence_generator, 
+                           inputs=[window, mono_probabilities]), rs_list)
+    pool.close()
+    pool.join()        
+    seqs=[seq for seqs_per_cpu in seqs for seq in seqs_per_cpu]
+    write_fasta(verbose, generated_sequences=seqs, sample=sample, outdir=outdir, 
+                window=window, sequence_num=sequence_num, chrom_num=chrom_num, seq_type='mononucleotide_simulated')
+    if verbose == True:
+        stop_time = float(time.time())
+        seq_time = (stop_time-stop_prob)/60
+        print('Mononucleotide sequence generation took ' + str(seq_time) + ' min.') 
+        print('-----------Indexing Mononucleotide Sequences and Creating Bedfiles--------------------')
+    index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, seq_type='mononucleotide_simulated')
+    generate_bed(verbose, outdir=outdir, sample=sample, sequence_num=sequence_num, chrom_num=chrom_num, 
+             window=window, ls=ls, seq_type='mononucleotide_simulated')
 
-    if mononucleotide_generation == True:
-#         if rerun == True:
-        #check for files and if they are empty
-        #double check that all simulated sequences were generated
-        #only run functions if files are empty or more sequences are needed
-#         else:
-        if verbose == True:
-            start_prob = float(time.time())
-            print('-----------Calculating Mononucleotide Dependant Base Position Probabilities-------------')
-        mono_probabilities=mono_probability_counter(ls=ls, window=window, outdir=outdir, sample=sample)
-        plot_positional_bias(outdir=outdir, sample=sample, window=window, mono_probabilities=mono_probabilities)
-        if verbose == True:
-            stop_prob = float(time.time())
-            prob_time = (stop_prob-start_prob)/60
-            print('Probability calculations took ' + str(prob_time) + ' min.') 
-            print('--------------------Generating Mononucleotide Sequences----------------------')
-            print('Initiating ' + str(cpus) + ' cpus.')
-        pool = multiprocessing.Pool(cpus)
-        seqs = pool.map(partial(mono_sequence_generator, 
-                               inputs=[window, mono_probabilities]), rs_list)
-        pool.close()
-        pool.join()        
-        seqs=[seq for seqs_per_cpu in seqs for seq in seqs_per_cpu]
-        write_fasta(verbose, generated_sequences=seqs, sample=sample, outdir=outdir, 
-                    window=window, sequence_num=sequence_num, chrom_num=chrom_num, seq_type='mononucleotide_simulated')
-        if verbose == True:
-            stop_time = float(time.time())
-            seq_time = (stop_time-stop_prob)/60
-            print('Mononucleotide sequence generation took ' + str(seq_time) + ' min.') 
-            print('-----------Indexing Mononucleotide Sequences and Creating Bedfiles--------------------')
-        index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, seq_type='mononucleotide_simulated')
-        generate_bed(verbose, outdir=outdir, sample=sample, sequence_num=sequence_num, chrom_num=chrom_num, 
-                 window=window, annotation=annotation, seq_type='mononucleotide_simulated')
-
-    if experimental_fimo == True and pre_scan is None:
-#         if rerun == True:
-        #check for files and if they are empty
-        #double check that all simulated sequences were generated
-        #only run functions if files are empty or more sequences are needed
-#         else:
-        if verbose == True:
-            print('-----------Formating Experimental Sequences for FIMO Scan--------------------')
-        chrom_num_exp = int(math.ceil(len(ls)*(window*2+21)/1150000))
-        write_fasta(verbose, generated_sequences=ls, sample=sample, outdir=outdir, 
-                    window=window, sequence_num=len(ls), chrom_num=chrom_num_exp, seq_type='experimental')
-        if verbose == True:
-            print('-----------Indexing Experimental Sequences and Creating Bedfiles--------------------')
-        index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, seq_type='experimental')
-        generate_bed(verbose, outdir=outdir, sample=sample, sequence_num=len(ls), chrom_num=chrom_num_exp, 
-                 window=window, annotation=annotation, seq_type='experimental')
+def run_experimental_fimo_formatter(verbose, outdir, sample, window, ls):
+    if verbose == True:
+        print('-----------Formating Experimental Sequences for FIMO Scan--------------------')
+    chrom_num_exp = int(math.ceil(len(ls)*(window*2+21)/1150000))
+    write_fasta(verbose, generated_sequences=ls, sample=sample, outdir=outdir, 
+                window=window, sequence_num=len(ls), chrom_num=chrom_num_exp, seq_type='experimental')
+    if verbose == True:
+        print('-----------Indexing Experimental Sequences and Creating Bedfiles--------------------')
+    index_and_chrm_sizes(verbose, outdir=outdir, sample=sample, seq_type='experimental')
+    generate_bed(verbose, outdir=outdir, sample=sample, sequence_num=len(ls), chrom_num=chrom_num_exp, 
+             window=window, ls=ls, seq_type='experimental')
 
 ######################################### Sequence Generator Functions #########################################
 ################################################## Setting up ##################################################
@@ -254,8 +254,8 @@ def get_sequences(verbose, genome, outdir, sample, plot_dinucleotide):
         annotation_file=outdir + '/annotations/' + sample + '_simulated_window.bed'
         os.system('bedtools getfasta -fi ' + genome + 
           ' -bed ' + annotation_file + 
-          ' -fo ' + outdir + '/temp/dinucleotide_base_composition_window_sequences.fa')
-        if os.stat(outdir + '/temp/dinucleotide_base_composition_window_sequences.fa').st_size == 0:
+          ' -fo ' + outdir + '/temp/dinucleotide_window_sequences.fa')
+        if os.stat(outdir + '/temp/dinucleotide_window_sequences.fa').st_size == 0:
             print('Extraction for plotting failed.')
     else:
         if (path.exists(outdir + '/temp/' + sample + '_window_sequences.fa') == False) or (os.stat(outdir + '/temp/' + sample + '_window_sequences.fa').st_size == 0):
@@ -413,7 +413,7 @@ def mono_probability_counter(ls, window, outdir, sample):
             else:
                 continue
         ll[i] = [x / (sum(ll[i])) for x in ll[i]]
-    if sample == 'dinucleotide_base_composition':
+    if sample == 'dinucleotide':
         print('Calculating positional base composition based on dinucleotide generated sequences.')
     base_df = pd.DataFrame.from_records(ll, columns=['A','C','G','T'])
     base_df.to_csv(outdir + '/generated_sequences/' + sample +'_mononucleotide_probabilites.tsv', sep='\t', index=False)
@@ -492,7 +492,7 @@ def index_and_chrm_sizes(verbose, outdir, sample, seq_type):
         if verbose == True:
             print('Successfully created chromosome size file %s' % outdir + '/generated_sequences/' + sample + '_' + seq_type + '.chrom.sizes')     
 
-def generate_bed(verbose, outdir, sample, sequence_num, chrom_num, window, annotation, seq_type):
+def generate_bed(verbose, outdir, sample, sequence_num, chrom_num, window, ls, seq_type):
     '''generates bed files defining mu for the simulated and experimental 'genomes'
     Calls windower'''
     if seq_type == 'simulated' or seq_type == 'mononucleotide_simulated':
@@ -500,8 +500,7 @@ def generate_bed(verbose, outdir, sample, sequence_num, chrom_num, window, annot
         chrom='sim'
     elif seq_type == 'experimental': 
         #getting the sequence number
-        with open(annotation, 'r') as an:
-            sequence_num = len(an.readlines())
+        sequence_num = len(ls)
         chrom='exp'
     else:
         sequence_num = sequence_num
@@ -581,7 +580,7 @@ def windower(bed, outdir, sample, window, seq_type, spef_dir, ident):
     bed_df['stop'] = bed_df.apply(lambda x: x['stop_new'] + int(window), axis=1)
     
     bed_df = bed_df.sort_values(by=['chr', 'start'])
-    bed_df = bed_df[bed_df['start'] > 0]
+    bed_df = bed_df[bed_df['start'] >= 0]
     ##saving the new annotation
     
     if ident == True:
@@ -621,10 +620,18 @@ def define_seq_structure(verbose, sequence_num, chrom_num, window):
     return seq_per_chrom, seq_last_chrom
 
 ###################################### Plotting positional bias ######################################
-def plot_positional_bias(outdir, sample, window, mono_probabilities):
+def plot_positional_bias(outdir, sample, window, base, probabilities):
     ##get positions                                                   
     starting=int(window)
-    stopping=int(window)+1
+    
+    if base == 'not_conditional':
+        stopping=int(window)+1
+        out_name='single_position'
+        
+    else:
+        stopping=int(window)-1
+        out_name='probability_given'+base
+    
     positions = np.arange(-starting,stopping,1)
 
     ### Line plot for each base on one grid ###
@@ -638,11 +645,11 @@ def plot_positional_bias(outdir, sample, window, mono_probabilities):
     cprobs=[]
     gprobs=[]
     tprobs=[]
-    for i in range(len(mono_probabilities)):
-        aprobs.append(mono_probabilities[i][0])
-        cprobs.append(mono_probabilities[i][1])
-        gprobs.append(mono_probabilities[i][2])
-        tprobs.append(mono_probabilities[i][3])
+    for i in range(len(probabilities)):
+        aprobs.append(probabilities[i][0])
+        cprobs.append(probabilities[i][1])
+        gprobs.append(probabilities[i][2])
+        tprobs.append(probabilities[i][3])
     probs=[aprobs,cprobs,gprobs,tprobs]
 
     for i,base in enumerate(bases):
@@ -653,8 +660,8 @@ def plot_positional_bias(outdir, sample, window, mono_probabilities):
     plt.xticks(fontsize = 25)
     plt.yticks(fontsize = 25)
     plt.legend(bbox_to_anchor=(1.05, 1),fontsize = 25, loc=2, borderaxespad=0.)
-    plt.suptitle(sample, fontsize=40, fontweight='bold')
-    plt.savefig(outdir + '/plots/' + sample + '_BaseDistribution.png',bbox_inches='tight')
+    plt.suptitle(sample+'_'+out_name, fontsize=40, fontweight='bold')
+    plt.savefig(outdir + '/plots/' + sample + '_' + out_name + '_BaseDistribution.png',bbox_inches='tight')
 
     # ## Smooth the frequencies for better visualization ### 
     plt.figure(figsize=(12,10))
@@ -669,5 +676,5 @@ def plot_positional_bias(outdir, sample, window, mono_probabilities):
     plt.xticks(fontsize = 25)
     plt.yticks(fontsize = 25)
     plt.legend(bbox_to_anchor=(1.05, 1),fontsize = 25, loc=2, borderaxespad=0.)
-    plt.suptitle(sample, fontsize=40, fontweight='bold')
-    plt.savefig(outdir + '/plots/' + sample + '_SmoothedBaseDistribution.png',bbox_inches='tight')
+    plt.suptitle(sample+'_'+out_name, fontsize=40, fontweight='bold')
+    plt.savefig(outdir + '/plots/' + sample + '_' + out_name + '_SmoothedBaseDistribution.png',bbox_inches='tight')

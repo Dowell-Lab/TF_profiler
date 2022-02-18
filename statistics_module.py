@@ -114,6 +114,6 @@ def plot_rbg(verbose, outdir, sample, color_type, md_score_df, slope, sigma):
         cax = divider.append_axes('right', size='5%', pad=0.05)
         plt.colorbar(gc, cax=cax, orientation='vertical')
     
-    plt.savefig(outdir + '/plots/' + sample + '_rbg_'+ color_type + '.png', bbox_inches='tight')
+    plt.savefig(outdir + '/plots/rbg_'+ color_type + '.png', bbox_inches='tight')
 
 
