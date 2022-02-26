@@ -18,7 +18,7 @@ def run_fimo_scanner(verbose, outdir, sample, cpus, motifs,
     fimo_dirs(verbose, outdir=outdir, seq_type=seq_type)
     motif_list = fimo_motif_names(verbose=verbose,motifs=motifs)
     if continue_run == True:
-        scanned_motif_list=check_scanned_motifs(verbose=verbose, outdir=outdir, sample=sample, seq_type=seq_type)
+        scanned_motif_list=check_scanned_motifs(outdir=outdir, sample=sample, seq_type=seq_type)
         mset = set(motif_list)
         sset = set(scanned_motif_list)
         motif_list=list(mset.difference(sset))
@@ -91,7 +91,7 @@ def fimo_motif_names(verbose, motifs):
         print('There are ' + str(len(motif_list)) + " motifs in this meme file.")
     return motif_list
 
-def check_scanned_motifs(verbose, outdir, sample, seq_type):
+def check_scanned_motifs(outdir, sample, seq_type):
     scanned_motif_list = []
     motif_path = outdir + '/motifs/' + seq_type + '/*'
     motif_filenames = glob.glob(motif_path)
@@ -155,12 +155,9 @@ def scanner(motif_list, inputs):
         os.system('fimo ' + fimo_verbosity + '--thresh ' + str(threshold_fimo) + ' --motif ' + motif_list + ' --oc ' + outdir + '/temp/' + seq_type + '_fimo_out/' + motif_list + ' ' + motifs + ' ' + fasta)
         
     df = pd.read_csv(outdir + '/temp/' + seq_type + '_fimo_out/'+motif_list+'/fimo.tsv', sep ='\t')
-    if verbose == True:
-        print("Post-processing FIMO output for %s" % motif_list)
     df.drop(df.tail(3).index,inplace=True)
     if df.empty == True:
-        if verbose == True:
-            print('Skipping ' + motif_list + ' -no motif hits.')
+        pass
     else:
         df = df.sort_values(by=['sequence_name', 'start']).reset_index()
         df['start'] = df['start'].astype(int) 

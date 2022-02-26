@@ -65,7 +65,5 @@ def calculate_traditional_md_score(tf_list, inputs):
     hlarge=len(distance_df)+1
     hsmall= len(distance_df[(distance_df['distance'] <= window*0.1) & (distance_df['distance'] >= -window*0.1)])+1
     md_score = hsmall/hlarge
-    if verbose == True:
-        print(tf_list + ' - MD-score: ' + str(md_score))
     return tf_list, hsmall, hlarge, md_score
 

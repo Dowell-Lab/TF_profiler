@@ -17,7 +17,8 @@ def run_distance_calculation(verbose, outdir, sample, annotation, window, cpus, 
     tf_list=get_scanned_tfs(verbose=verbose, outdir=outdir, sample=sample, 
                             pre_scan=pre_scan, simulated_pre_scan=simulated_pre_scan, seq_type=seq_type)
     annotation_df, chr_list = read_annotation(verbose=verbose, sample=sample, 
-                                                 outdir=outdir, pre_scan=pre_scan, simulated_pre_scan=simulated_pre_scan,
+                                                 outdir=outdir, window=window, 
+                                              pre_scan=pre_scan, simulated_pre_scan=simulated_pre_scan,
                                               annotation=annotation, seq_type=seq_type)
     if verbose == True: 
         print('--------------Beginning Distance Calculation---------------')
@@ -75,7 +76,7 @@ def get_scanned_tfs(verbose, outdir, sample, pre_scan, simulated_pre_scan, seq_t
         print('There are ' + str(len(tf_list)) + ' motifs with hits in this dataset.')
     return tf_list
 
-def read_annotation(verbose, sample, outdir, pre_scan, simulated_pre_scan, annotation, seq_type):
+def read_annotation(verbose, sample, outdir, window, pre_scan, simulated_pre_scan, annotation, seq_type):
     if verbose == True:
         print('Reading annotation file and centering regions...')
     if seq_type == 'experimental' and pre_scan is not None:
@@ -88,8 +89,8 @@ def read_annotation(verbose, sample, outdir, pre_scan, simulated_pre_scan, annot
     else:
         annotation_file = outdir + '/annotations/' + sample + '_' + seq_type + '_window.bed'
         annotation_df = pd.read_csv(annotation_file, sep='\t', header=None)
-        annotation_df.columns = ['chr', 'start', 'stop', 'region_id']
     
+    annotation_df.columns = ['chr', 'start', 'stop', 'region_id']
     annotation_df['center'] = round((annotation_df['stop'] + annotation_df['start'])/2)
     annotation_df.center = annotation_df.center.astype(int)
     chr_list = list(annotation_df['chr'].unique())
@@ -98,12 +99,12 @@ def read_annotation(verbose, sample, outdir, pre_scan, simulated_pre_scan, annot
 def prescan_annotation_windower(bed, outdir, sample, window, seq_type):
     df = pd.read_csv(bed, sep='\t', header=None)
     df = df[[0,1,2]]
-    df = df[['chr', 'start', 'stop']]
+    df.columns = ['chr', 'start', 'stop']
     df = df.sort_values(by=['chr', 'start'])
     df['count'] = (np.arange(len(df)))
     df['count'] = (df['count']+1).apply(str)
 
-    df['region_name'] = df['chr'] + ';region_' + df['count']
+    df['region_id'] = df['chr'] + ';region_' + df['count']
     df.drop(['count'], axis=1, inplace=True)   
 
     df['start_new'] = df.apply(lambda x: round((x['start'] + x['stop'])/2), axis=1)
@@ -112,7 +113,7 @@ def prescan_annotation_windower(bed, outdir, sample, window, seq_type):
     ##the -1500 position from 'origin'
     df['start'] = df.apply(lambda x: x['start_new'] - int(window), axis=1)
     df['stop'] = df.apply(lambda x: x['stop_new'] + int(window), axis=1)
-    df=df[['chr', 'start', 'stop', 'region_name']]
+    df=df[['chr', 'start', 'stop', 'region_id']]
     
     df.to_csv(outdir + '/annotations/' + sample + '_' + seq_type + '_prescan_windowed.bed', header=None, index=False, sep='\t')
     return df
@@ -128,10 +129,7 @@ def read_motif(verbose, outdir, pre_scan, simulated_pre_scan, chr_list, seq_type
         motif_file = simulated_pre_scan + '/' + tf + '.sorted.bed'
     else:      
         motif_file = outdir + '/motifs/' + seq_type + '/' + tf + '.sorted.bed'
-
-    if verbose == True:
-        print('Reading motif file ' + tf + ' and centering regions...')    
-    
+       
     motif_df = pd.read_csv(motif_file, sep='\t', header=None)
 #     motif_df = motif_df[[0,1,2,4,7]]
 #     motif_df.columns = ['chr','start', 'stop', 'score', 'motif_id']

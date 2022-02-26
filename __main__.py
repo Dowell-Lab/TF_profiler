@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     
 #     ###FIMO Scanning options
-    fimo.add_argument('-p', '--pre_scan', dest="pre_scan", default=None, help = 'directory containing pre-scanned motif hits in bed format over the whole genome obtained using the same fimo parameters (background and threshold) as the simulated dataset. If path is set experimental genome scan will be skipped and pre-scanned motif hits will be used instead.', metavar="/full/path/to/pre-scanned/motifs", required=False)                   
+    fimo.add_argument('-q', '--pre_scan', dest="pre_scan", default=None, help = 'directory containing pre-scanned motif hits in bed format over the whole genome obtained using the same fimo parameters (background and threshold) as the simulated dataset. If path is set experimental genome scan will be skipped and pre-scanned motif hits will be used instead.', metavar="/full/path/to/pre-scanned/motifs", required=False)                   
     fimo.add_argument('-x', '--experimental_fimo', dest="experimental_fimo", type=str2bool, nargs='?', const=True, default=False, help = 'will run fimo over only the annotated regions from the experimental dataset. True will increase run time. Recommended if you are only looking at a single dataset. If False, provide destination of the pre-scanned genome using the "--pre_scan" flag. Default: False.', metavar="True/False", required=False)
     fimo.add_argument('-k', '--simulated_pre_scan', dest="simulated_pre_scan", default=None, help = 'directory containing pre-scanned motif hits in bed format over a simulated dataset obtained using the same fimo parameters (background and threshold) as the experimental dataset. If path is set simulated scan will be skipped and pre-scanned motif hits will be used instead. NOTE: Make sure there are sufficient simulated sequences to match the total number of experimental sequences.', metavar="/full/path/to/pre-scanned/motifs", required=False)
     fimo.add_argument('-m', '--motifs', dest="motifs", help = 'meme file for TFs', metavar="motif_database.meme", required=True)
@@ -56,7 +56,7 @@ if __name__ == "__main__":
         
     ###Distance
     scoring.add_argument('-u', '--traditional_md', dest="traditional_md", type=str2bool, nargs='?', const=True, default=True, help = 'will calculate md score using traditional method, number of hits within the small window (10 percent of the large window) divided by total hits in the large windiow. Default: True.', metavar="True/False", required=False)    
-
+    scoring.add_argument('-p', '--pval_cutoff',dest="pval_cutoff",type=float, default=0.05, help = 'Cutoff for defining enrichment/depetion. Default: 0.05', metavar="float", required=False)
 
     args = p.parse_args()
 
@@ -64,5 +64,5 @@ main.run(args.verbose, args.outdir, args.sample, args.genome, args.annotation,
         args.sequence_num, args.chrom_num, args.motifs, args.background_file, args.seed, args.cpus, args.window,
         args.mononucleotide_generation, args.dinucleotide_generation, args.simulated_pre_scan,
         args.experimental_fimo, args.pre_scan, args.continue_run,
-        args.threshold_fimo, args.traditional_md)
+        args.threshold_fimo, args.pval_cutoff, args.traditional_md)
 
