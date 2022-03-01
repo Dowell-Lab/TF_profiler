@@ -14,7 +14,21 @@ if __name__ == "__main__":
         elif v.lower() in ('no', 'false', 'f', 'n', '0'):
             return False
         else:
-            raise argparse.ArgumentTypeError('Boolean value expected.')    
+            raise argparse.ArgumentTypeError('Boolean value expected.')   
+    
+    def y_flag_barcode_plotter(v):
+        if v == True:
+            return 'significance'
+        elif v.lower() in ('significance', 'significant', 'yes', 'true', 't', 'y', '1'):
+            return 'significance'
+        elif v.lower() in ('all', 'a', '2'):
+            return 'all'
+        elif v == False:
+            return 'none'
+        elif v.lower() in ('none', 'no', 'false', 'f', 'n', '0','4'):
+            return 'none'
+        else:
+            return v
 
     p = argparse.ArgumentParser(description = 'This work flow functions to assess active transcription factors in a ATAC-seq or PRO-seq data set. First, it calculates base content per position over a 3000bp window (given by a bed file). Subsequently, it generates sequences using a first or second order MM to obtain a simulated background sequence. Next, it can run FIMO to generate motif calls within the generated sequence (and the original sequence provided) or take a set of pre-scanned sequences. Next, it generates an MD score file for both the original sequence and the simulated sequence. Lastly, it outputs a text file with TF activation information along with various plots displaying this information.', formatter_class=RawTextHelpFormatter)    
     
@@ -54,9 +68,10 @@ if __name__ == "__main__":
     fimo.add_argument('-b', '--background_file', dest="background_file", help = 'background base composition of a given genome. This flag is HIGHLY recommended. See background options in useful files.', metavar="background.csv", default=None, required=False)    
         ###Can I default in a useful files folder for a certain background?
         
-    ###Distance
+    ###Distance/scoring
     scoring.add_argument('-u', '--traditional_md', dest="traditional_md", type=str2bool, nargs='?', const=True, default=True, help = 'will calculate md score using traditional method, number of hits within the small window (10 percent of the large window) divided by total hits in the large windiow. Default: True.', metavar="True/False", required=False)    
     scoring.add_argument('-p', '--pval_cutoff',dest="pval_cutoff",type=float, default=0.05, help = 'Cutoff for defining enrichment/depetion. Default: 0.05', metavar="float", required=False)
+    scoring.add_argument('-y', '--plot_barcode',dest="plot_barcode",type=y_flag_barcode_plotter, default='significance', help = 'This argument runs the barcode plotting module. There are 4 options for this flag. 1, significance or True plots barcodes only for significant TFs as defined by the p-value cutoff. 2 or all plots all barcodes from the MD-score file. 3,only functions if you provide <tf_name> and plots only the barcode of the TF specified. Note: if the string is ambigous then it will plot ALL TFs that fit the <tf_name> parameters within the md-score file. If no TF matches the string provided then nothing will be plotted. 4, none or False results in no barcodes plotted. Default: significance', metavar='[significance/all/<tf_name>/none]', required=False)
 
     args = p.parse_args()
 
@@ -64,5 +79,5 @@ main.run(args.verbose, args.outdir, args.sample, args.genome, args.annotation,
         args.sequence_num, args.chrom_num, args.motifs, args.background_file, args.seed, args.cpus, args.window,
         args.mononucleotide_generation, args.dinucleotide_generation, args.simulated_pre_scan,
         args.experimental_fimo, args.pre_scan, args.continue_run,
-        args.threshold_fimo, args.pval_cutoff, args.traditional_md)
+        args.threshold_fimo, args.pval_cutoff, args.traditional_md, args.plot_barcode)
 

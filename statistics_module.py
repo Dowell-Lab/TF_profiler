@@ -12,9 +12,9 @@ from sklearn.covariance import EllipticEnvelope
 from scipy.stats import norm
 
 ######################################### MD Score Main #########################################
-def run_statistics_module(verbose, outdir, sample, traditional_md, pval_cutoff, outliers_fraction):
+def run_statistics_module(verbose, outdir, sample, window, traditional_md, pval_cutoff, outliers_fraction, plot_barcode):
     md_score_df = import_md_scores(outdir=outdir,sample=sample, traditional_md=traditional_md)
-    md_score_df, xx, yy, Z = define_unchanging_md_scores(verbose=verbose, md_score_df=md_score_df, 
+    md_score_df = define_unchanging_md_scores(verbose=verbose, md_score_df=md_score_df, 
                                                   outliers_fraction=outliers_fraction)
     md_score_df, slope, intercept, sigma_cutoff = determine_significance(verbose=verbose, outdir=outdir, 
                                                                          md_score_df=md_score_df, pval_cutoff=pval_cutoff)
@@ -24,8 +24,11 @@ def run_statistics_module(verbose, outdir, sample, traditional_md, pval_cutoff, 
         plot_rbg(verbose=verbose, outdir=outdir, sample=sample, 
                  color_type=color_type, md_score_df=md_score_df, 
                  slope=slope, intercept=intercept, 
-                 sigma_cutoff=sigma_cutoff,
-                 xx=xx, yy=yy, Z=Z)
+                 sigma_cutoff=sigma_cutoff)
+    if plot_barcode != 'none':
+        plot_barcodes(verbose=verbose, outdir=outdir, sample=sample,
+                      window=window, pval_cutoff=pval_cutoff, md_score_df=md_score_df, 
+                      plot_barcode=plot_barcode)
 
 ######################################### MD Score Functions #########################################
 def import_md_scores(outdir,sample,traditional_md):
@@ -58,15 +61,8 @@ def define_unchanging_md_scores(verbose, md_score_df, outliers_fraction):
     # Fit
     algorithm.fit(X)
     y_pred_elliptic = algorithm.fit(X).predict(X)
-    md_score_df['elliptic_outlier'] = y_pred_elliptic
-    
-    # Get ellipse shape
-    xx, yy = np.meshgrid(np.linspace(0.05, 0.15),
-                 np.linspace(0.05, 0.15))
-    Z = algorithm.predict(np.c_[xx.ravel(), yy.ravel()])
-    Z = Z.reshape(xx.shape)
-    
-    return md_score_df, xx, yy, Z
+    md_score_df['elliptic_outlier'] = y_pred_elliptic    
+    return md_score_df
 
 def determine_significance(verbose, outdir, md_score_df, pval_cutoff):
     fit_unchanging_md_score = md_score_df[md_score_df['elliptic_outlier'] == 1]
@@ -111,9 +107,10 @@ def significance_caller(row, pval_cutoff):
     else:
         return 'Not Significant'
        
-def plot_rbg(verbose, outdir, sample, color_type, md_score_df, slope, intercept, sigma_cutoff, xx, yy, Z):
+def plot_rbg(verbose, outdir, sample, color_type, md_score_df, slope, intercept, sigma_cutoff):
     if verbose=='True':
         print('Plotting rbg. Coloring is based on '+ color_type +'.')
+    plt.clf()
     plt.figure(figsize=(12,10))
     gs = plt.GridSpec(1, 1)
     ax = plt.subplot(gs[0])
@@ -137,7 +134,6 @@ def plot_rbg(verbose, outdir, sample, color_type, md_score_df, slope, intercept,
                 color='blue'
             ax.scatter(md_score_df_outlier['md_score_sim'], 
                md_score_df_outlier['md_score_exp'], color=color, alpha=0.7)
-        plt.contour(xx, yy, Z, levels=[0], linewidths=2, colors='black', alpha = 0.5)
         ax.plot([0, max_x*1.1], [intercept, max_x*slope*1.1+intercept], 
                 color='black', linestyle='--', alpha = 0.7)
     
@@ -175,3 +171,84 @@ def plot_rbg(verbose, outdir, sample, color_type, md_score_df, slope, intercept,
     
     plt.savefig(outdir + '/plots/rbg_'+ color_type + '.png', bbox_inches='tight')
 
+def plot_barcodes(verbose, outdir, sample, window, pval_cutoff, md_score_df, plot_barcode):
+    try:
+        os.system('mkdir -p ' + outdir + '/plots/barcodes')
+    except OSError:
+        print('Creation of the directory %s failed' % outdir + '/plots/barcodes')
+        sys.exit(1)
+    else:
+        if verbose == True:
+            print(outdir + '/plots/barcodes exists.') 
+    
+    bins = int(window*0.1)
+    
+    ### plot barcode flag determines which barcodes are plotted
+    if plot_barcode == 'significance':
+        significant_md_score_df = md_score_df[md_score_df['pval'] <= pval_cutoff]
+        tf_list=list(significant_md_score_df['tf'])
+    elif plot_barcode == 'all':
+        tf_list=list(md_score_df['tf'])
+    else:
+        all_tf_list = list(md_score_df['tf'])
+        tf_list=[]
+        tf_upper_case = str.upper(plot_barcode)
+        tf_list.extend([tf for tf in all_tf_list if tf_upper_case in tf])
+
+    if len(tf_list) == 0:
+        if verbose == True:
+            print('No TFs with an MD-score in both simulated and experimental sets match the user defined TF.')
+    else:
+        if verbose == True:
+            print('Plotting barcodes for ' + str(len(tf_list)) + ' TFs.')
+        for tf in tf_list:
+            ###setting up experimental data for a given tf
+            exp_distance_df = pd.read_csv(outdir+'/distances/experimental/'+tf+'_distances.txt', sep='\t')
+            exp_heat, xedges = np.histogram(exp_distance_df['distance'],bins=bins)
+            exp_n_distance=len(exp_distance_df)
+            max_exp=max(exp_heat)
+            exp_md_score=round(float(md_score_df['md_score_exp'][md_score_df['tf'] == tf]), 4)
+
+            ###setting up simulated data for a given tf
+            sim_distance_df = pd.read_csv(outdir+'/distances/simulated/'+tf+'_distances.txt', sep='\t')
+            sim_heat, xedges = np.histogram(sim_distance_df['distance'],bins=bins)
+            sim_n_distance=len(sim_distance_df)
+            max_sim=max(sim_heat)
+            sim_md_score=round(float(md_score_df['md_score_sim'][md_score_df['tf'] == tf]), 4)
+
+            pval=round(float(md_score_df['pval'][md_score_df['tf'] == tf]), 4)
+
+            plt.clf()
+            plt.figure(figsize=(12,10))
+
+            ###plotting experimental data
+            ax = plt.subplot(1, 2, 1)
+            heat_m = np.nan * np.empty(shape=(int(bins/4), bins))
+            for row in range(int(bins/4)):
+                heat_m[row] = exp_heat
+                ax.matshow(heat_m, cmap='YlOrRd', vmin=0, vmax=max_exp)
+            ax.axis('off')
+            ax.text(bins/2, 43, 'Experimental MD-score = ' + str(exp_md_score), 
+                     ha='center', size=14, zorder=0)
+            ax.text(bins/2, 50, 'N = ' + str(exp_n_distance), 
+                     ha='center', size=14, zorder=0)
+
+            ###plotting simulated data
+            ax1 = plt.subplot(1, 2, 2)
+            heat_m = np.nan * np.empty(shape=(int(bins/4), bins))
+            for row in range(int(bins/4)):
+                heat_m[row] = sim_heat
+                ax1.matshow(heat_m, cmap='YlOrRd', vmin=0, vmax=max_sim)
+            ax1.axis('off')
+            ax1.text(bins/2, 43, 'Simulated MD-score = ' + str(sim_md_score), 
+                     ha='center', size=14, zorder=0)
+            ax1.text(bins/2, 50, 'N = ' + str(sim_n_distance), 
+                     ha='center', size=14, zorder=0)
+
+            ###plot title including the significance value
+            plt.suptitle(tf + '; p-value = ' + str(pval), 
+                     y = 0.59, x = 0.5, size=20, zorder=0)
+            plt.tight_layout()
+
+            ###plot export
+            plt.savefig(outdir+'/plots/barcodes/'+tf+'.png', bbox_inches='tight')

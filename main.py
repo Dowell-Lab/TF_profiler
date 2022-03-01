@@ -16,7 +16,7 @@ def run(verbose, outdir, sample, genome, annotation,
         sequence_num, chrom_num, motifs, background_file, seed, cpus=1, window=1500,
         mononucleotide_generation=False, dinucleotide_generation=True, simulated_pre_scan=None,
         experimental_fimo=False, pre_scan=None, continue_run=False,
-        threshold_fimo='1e-5', pval_cutoff=0.05, traditional_md=True): 
+        threshold_fimo='1e-5', pval_cutoff=0.05, traditional_md=True, plot_barcode='significance'): 
 #################################### Sequence Generation ####################################
     if verbose == True:
         print('--------------Generating Sequences--------------')
@@ -176,9 +176,8 @@ def run(verbose, outdir, sample, genome, annotation,
         print('--------------Determining Significance and Plotting--------------')
         print('Start time: %s' % str(datetime.datetime.now()))  
     run_statistics_module(verbose=verbose, outdir=outdir, 
-                          sample=sample, traditional_md=traditional_md, 
-                          pval_cutoff=pval_cutoff, outliers_fraction=0.25)
- 
+                          sample=sample, window=window, traditional_md=traditional_md, 
+                          pval_cutoff=pval_cutoff, outliers_fraction=0.25, plot_barcode=plot_barcode)
     if verbose == True:
         print('--------------RBG Workflow Complete--------------')
         print('Stop time: %s' % str(datetime.datetime.now())) 
