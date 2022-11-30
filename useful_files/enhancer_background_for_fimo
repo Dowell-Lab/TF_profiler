@@ -1,7 +1,0 @@
-# 0-order Markov frequencies from file 'experimental_window150_sequences.fa' based on levandowski2021bidirs and hg38.fa
-# seqs: 44121    min: 301    max: 301   avg: 301    sum: 13280351    alph: DNA
-# order 0
-A 2.353e-01
-C 2.647e-01
-G 2.647e-01
-T 2.353e-01
