@@ -104,7 +104,10 @@ def check_scanned_motifs(outdir, sample, seq_type):
 
 def get_gc(verbose, outdir, sample, motifs, motif_list, alphabet=['A','C','G','T']):
     '''Obtain a pssm model from a meme formatted database file.'''
-    if (path.exists(outdir + "/generated_sequences/" + str(sample) + "_motif_gc_percentage.txt") == False):
+    meme_name=str(motifs)
+    meme_name = meme_name.split('/')[-1]
+    meme_name = meme_name.replace('.meme', '')    
+    if (path.exists('~/rbg/assets/'+ meme_name +'_motif_gc_percentage.txt') == False):
         gc_out={}
         for motif in motif_list:
             motif_hit = False
@@ -133,11 +136,12 @@ def get_gc(verbose, outdir, sample, motifs, motif_list, alphabet=['A','C','G','T
             df_gc_out = pd.DataFrame.from_dict(gc_out)
             df_gc_out = df_gc_out.transpose()
             df_gc_out.columns =['motif', 'percent_gc','motif_length']
-            df_gc_out.to_csv(outdir + "/generated_sequences/" + str(sample) + "_motif_gc_percentage.txt", header=None, index=False, sep='\t')
+    
+            df_gc_out.to_csv('~/rbg/assets/'+ meme_name +'_motif_gc_percentage.txt', header=None, index=False, sep='\t')
         else:
             if verbose == True:
                 print('Motif length and GC content already calculated.')
-                print('File: ' + outdir + "/generated_sequences/" + str(sample) + "_motif_gc_percentage.txt")
+                print('File: ~/rbg/assets/'+ meme_name +'_motif_gc_percentage.txt')
 
 def scanner(motif_list, inputs):
     verbose, outdir, sample, motifs, threshold_fimo, background_file, seq_type = inputs

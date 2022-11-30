@@ -10,15 +10,15 @@ from functools import partial
 import numpy as np
 import pandas as pd
 ######################################### Distance Main #########################################
-def run_distance_calculation(verbose, outdir, sample, annotation, window, cpus, seq_type, pre_scan, simulated_pre_scan):
+def run_distance_calculation(verbose, outdir, sample, annotation, window, cpus, seq_type, pre_scan):
     if verbose==True:
         print('--------------Pulling in Annotation and Getting List of Motifs---------------')
     md_dirs(verbose, outdir=outdir, seq_type=seq_type)
     tf_list=get_scanned_tfs(verbose=verbose, outdir=outdir, sample=sample, 
-                            pre_scan=pre_scan, simulated_pre_scan=simulated_pre_scan, seq_type=seq_type)
+                            pre_scan=pre_scan, seq_type=seq_type)
     annotation_df, chr_list = read_annotation(verbose=verbose, sample=sample, 
                                                  outdir=outdir, window=window, 
-                                              pre_scan=pre_scan, simulated_pre_scan=simulated_pre_scan,
+                                              pre_scan=pre_scan,
                                               annotation=annotation, seq_type=seq_type)
     if verbose == True: 
         print('--------------Beginning Distance Calculation---------------')
@@ -27,7 +27,7 @@ def run_distance_calculation(verbose, outdir, sample, annotation, window, cpus, 
         print('Start time: %s' % str(datetime.datetime.now()))
 
     for tf in tf_list:
-        motif_df = read_motif(verbose=verbose, outdir=outdir, pre_scan=pre_scan, simulated_pre_scan=simulated_pre_scan,
+        motif_df = read_motif(verbose=verbose, outdir=outdir, pre_scan=pre_scan,
                               chr_list=chr_list, seq_type=seq_type, tf=tf)  ##handle prescan here
         pool = multiprocessing.Pool(cpus)
         distance_dfs = pool.map(partial(distance_calculation, 
@@ -36,7 +36,7 @@ def run_distance_calculation(verbose, outdir, sample, annotation, window, cpus, 
         pool.join()
         distance_df = pd.concat(distance_dfs, axis=0)
         distance_df.to_csv(outdir + '/distances/' + seq_type + '/' + tf +'_distances.txt',
-                          sep='\t')
+                          sep='\t', index=False)
     if verbose == True:
         print("---------Distance Calculation Complete----------")
         stop_time = int(time.time())
@@ -55,11 +55,9 @@ def md_dirs(verbose, outdir, seq_type):
         if verbose == True:
             print(outdir + '/distances/' + seq_type + ' exists.')
 
-def get_scanned_tfs(verbose, outdir, sample, pre_scan, simulated_pre_scan, seq_type):
+def get_scanned_tfs(verbose, outdir, sample, pre_scan, seq_type):
     if seq_type == 'experimental' and pre_scan is not None:
         tf_motif_path = pre_scan + '/*'
-    elif seq_type == 'simulated' and simulated_pre_scan is not None:
-        tf_motif_path = simulated_pre_scan + '/*'
     else:
         tf_motif_path = outdir + '/motifs/' + seq_type + '/*'
         
@@ -76,16 +74,12 @@ def get_scanned_tfs(verbose, outdir, sample, pre_scan, simulated_pre_scan, seq_t
         print('There are ' + str(len(tf_list)) + ' motifs with hits in this dataset.')
     return tf_list
 
-def read_annotation(verbose, sample, outdir, window, pre_scan, simulated_pre_scan, annotation, seq_type):
+def read_annotation(verbose, sample, outdir, window, pre_scan, annotation, seq_type):
     if verbose == True:
         print('Reading annotation file and centering regions...')
     if seq_type == 'experimental' and pre_scan is not None:
         annotation_df = prescan_annotation_windower(bed=annotation, outdir=outdir, 
                                                     sample=sample, window=window, seq_type=seq_type)
-    elif seq_type == 'simulated' and simulated_pre_scan is not None:
-        print('needs another flag that is required when simulated pre-scan is called')
-#         annotation_df = prescan_annotation_windower(bed=simulated_annotation, outdir=outdir, 
-#                                                     sample=sample, window=window, seq_type=seq_type)
     else:
         annotation_file = outdir + '/annotations/' + sample + '_' + seq_type + '_window.bed'
         annotation_df = pd.read_csv(annotation_file, sep='\t', header=None)
@@ -97,6 +91,7 @@ def read_annotation(verbose, sample, outdir, window, pre_scan, simulated_pre_sca
     return annotation_df, chr_list
 
 def prescan_annotation_windower(bed, outdir, sample, window, seq_type):
+    print(bed)
     df = pd.read_csv(bed, sep='\t', header=None)
     df = df[[0,1,2]]
     df.columns = ['chr', 'start', 'stop']
@@ -115,25 +110,18 @@ def prescan_annotation_windower(bed, outdir, sample, window, seq_type):
     df['stop'] = df.apply(lambda x: x['stop_new'] + int(window), axis=1)
     df=df[['chr', 'start', 'stop', 'region_id']]
     
+    os.system('mkdir -p ' + outdir + '/annotations/')
     df.to_csv(outdir + '/annotations/' + sample + '_' + seq_type + '_prescan_windowed.bed', header=None, index=False, sep='\t')
     return df
     
-def read_motif(verbose, outdir, pre_scan, simulated_pre_scan, chr_list, seq_type, tf):
+def read_motif(verbose, outdir, pre_scan, chr_list, seq_type, tf):
     if seq_type == 'experimental' and pre_scan is not None:
-        if verbose == True:
-            print('Using pre-scan...')
         motif_file = pre_scan + '/' + tf + '.sorted.bed'
-    elif seq_type == 'simulated' and simulated_pre_scan is not None:
-        if verbose == True:
-            print('Using simulated pre-scan...')
-        motif_file = simulated_pre_scan + '/' + tf + '.sorted.bed'
     else:      
         motif_file = outdir + '/motifs/' + seq_type + '/' + tf + '.sorted.bed'
        
     motif_df = pd.read_csv(motif_file, sep='\t', header=None)
-#     motif_df = motif_df[[0,1,2,4,7]]
-#     motif_df.columns = ['chr','start', 'stop', 'score', 'motif_id']
-    motif_df.columns = ['chr','start', 'stop', 'score', 'strand', 'motif_id'] ##in the process of changing fimo output
+    motif_df.columns = ['chr','start', 'stop', 'score', 'strand', 'motif_id']
     motif_df['center'] = round((motif_df['stop'] + motif_df['start'])/2)
     motif_df = motif_df.sort_values(by='score', ascending=False)
     motif_df = motif_df.drop_duplicates(subset=['center'], keep='first')

@@ -1,5 +1,6 @@
 ######################################### Imports #########################################
 import sys
+import os
 from os import path
 import datetime
 from sequence_generator import run_sequence_generator
@@ -16,8 +17,8 @@ def run(verbose, outdir, sample, genome, annotation,
         sequence_num, chrom_num, motifs, background_file, seed, cpus=1, window=1500,
         mononucleotide_generation=False, dinucleotide_generation=True, simulated_pre_scan=None,
         experimental_fimo=False, pre_scan=None, continue_run=False,
-        threshold_fimo='1e-5', pval_cutoff=0.05, traditional_md=True, plot_barcode='significance'): 
-#################################### Sequence Generation ####################################
+        threshold_fimo='1e-5', pval_cutoff=0.05, traditional_md=True, plot_barcode='none'): 
+# #################################### Sequence Generation ####################################
     if verbose == True:
         print('--------------Generating Sequences--------------')
         print('Start time: %s' % str(datetime.datetime.now()))
@@ -111,21 +112,23 @@ def run(verbose, outdir, sample, genome, annotation,
     ### Simulated Distances ###
     ### If simulated_pre_scan is specified then it will be used by default ###
     ### If simulated_pre_scan is none then generated dinucleotide sequences will be run ###
-    if simulated_pre_scan is not None or dinucleotide_generation == True:
+    if simulated_pre_scan is not None:
+        print('Using simulated pre-scan distance table.')
+    elif dinucleotide_generation==True:
         if verbose == True:
             print('--------------Simulated Distances--------------')  
         run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
                              cpus=cpus, seq_type='simulated', 
-                                 pre_scan=pre_scan, simulated_pre_scan=simulated_pre_scan)            
+                                 pre_scan=pre_scan)            
     ### Mononucleotide Distances ###
     if simulated_pre_scan is not None:
-        print('Simulated pre-scan is complete.')
+        print('Using simulated pre-scan distance table.')
     elif mononucleotide_generation == True:
         if verbose == True:
             print('--------------Mononucleotide Simulated Distances--------------') 
         run_distance_calculation(verbose=verbose, outdir=outdir,annotation=annotation, sample=sample, window=window, 
                              cpus=cpus, seq_type='mononucleotide_simulated', 
-                                 pre_scan=pre_scan, simulated_pre_scan=simulated_pre_scan)  
+                                 pre_scan=pre_scan)  
     ### Experimental Distances ###
     ### If pre_scan is specified then it will be used by default ###
     ### If pre_scan is none then the newly scanned experimental sequences will be run ###
@@ -134,11 +137,11 @@ def run(verbose, outdir, sample, genome, annotation,
             print('--------------Experimental Distances--------------')        
         run_distance_calculation(verbose=verbose, outdir=outdir, annotation=annotation, sample=sample, window=window, 
                              cpus=cpus, seq_type='experimental', 
-                                 pre_scan=pre_scan, simulated_pre_scan=simulated_pre_scan) 
+                                 pre_scan=pre_scan) 
     if verbose == True:
         print('--------------Calculating Distances Complete--------------')
         print('Stop time: %s' % str(datetime.datetime.now()))   
-####################################### Scoring Module ######################################### 
+###################################### Scoring Module ######################################### 
     if verbose == True:
         print('--------------Scoring Motif Displacement--------------')    
         print('Start time: %s' % str(datetime.datetime.now()))                    
@@ -150,7 +153,8 @@ def run(verbose, outdir, sample, genome, annotation,
             print('--------------Simulated MD Score--------------')  
             print('Calling distances from ' + outdir + '/distances/simulated/')
         run_scoring_module(verbose=verbose, outdir=outdir,sample=sample, window=window,cpus=cpus,
-                           seq_type='simulated')
+                           seq_type='simulated', 
+                           simulated_pre_scan=simulated_pre_scan, annotation=annotation)
     ### Mononucleotide Distances ###
     if simulated_pre_scan is not None:
         print('Simulated MD Score Calculation is complete.')
@@ -158,7 +162,8 @@ def run(verbose, outdir, sample, genome, annotation,
         if verbose == True:
             print('--------------Mononucleotide MD Score--------------') 
         run_scoring_module(verbose=verbose, outdir=outdir,sample=sample, window=window, cpus=cpus,
-                           seq_type='mononucleotide_simulated') 
+                           seq_type='mononucleotide_simulated', 
+                           simulated_pre_scan=simulated_pre_scan, annotation=annotation) 
     ### Experimental Score ### 
     ### Calls experimental distances that are calculated from prescan in outdir + '/distances/experimental/' ###
     ### Otherwise the distances in outdir + '/distances/experimental/' are from the newly scanned experimental sequences ###     
@@ -167,7 +172,8 @@ def run(verbose, outdir, sample, genome, annotation,
             print('--------------Experimental MD Score--------------')
             print('Calling distances from ' + outdir + '/distances/experimental/')
         run_scoring_module(verbose=verbose, outdir=outdir, sample=sample, window=window, cpus=cpus,
-                           seq_type='experimental')
+                           seq_type='experimental', 
+                           simulated_pre_scan=simulated_pre_scan, annotation=annotation)
     if verbose == True:
         print('--------------Motif Displacement Scoring Complete--------------')
         print('Stop time: %s' % str(datetime.datetime.now())) 
@@ -176,17 +182,10 @@ def run(verbose, outdir, sample, genome, annotation,
         print('--------------Determining Significance and Plotting--------------')
         print('Start time: %s' % str(datetime.datetime.now()))  
     run_statistics_module(verbose=verbose, outdir=outdir, 
-                          sample=sample, window=window, traditional_md=traditional_md, 
+                          sample=sample, window=window, motifs=motifs, traditional_md=traditional_md, 
                           pval_cutoff=pval_cutoff, outliers_fraction=0.25, plot_barcode=plot_barcode)
     if verbose == True:
         print('--------------RBG Workflow Complete--------------')
-        print('Stop time: %s' % str(datetime.datetime.now())) 
-
-
-
-
-
-
-
-
-                      
+        print('Stop time: %s' % str(datetime.datetime.now()))
+    
+    os.system('rm -r ' + outdir + '/temp')

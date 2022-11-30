@@ -50,7 +50,7 @@ def run_sequence_generator(verbose, outdir, sample, genome, annotation,
     return ls, rs_list, sequence_num, chrom_num
     
 def run_dinucleotide_generator(verbose, outdir, sample,
-                           sequence_num, chrom_num, cpus, window, ls, rs_list):
+                           sequence_num, chrom_num, cpus, window, ls, rs_list):    
     if verbose == True:
         start_prob = float(time.time())
         print('-----------Calculating Dinucleotide Dependant Base Position Probabilities-------------')
@@ -63,6 +63,19 @@ def run_dinucleotide_generator(verbose, outdir, sample,
         stop_prob = float(time.time())
         prob_time = (stop_prob-start_prob)/60
         print('Probability calculations took ' + str(prob_time) + ' min.') 
+        print('-----------Plotting positional biases from experimental data-----------')
+    ###plotting mononucleotide probabilites from the experimental data
+    mono_probabilities=mono_probability_counter(ls=ls, window=window, outdir=outdir, sample=sample)
+    plot_positional_bias(outdir=outdir, sample=sample, window=window, 
+                         base='not_conditional', probabilities=mono_probabilities)
+    ###plotting conditional probabilities from the experimental data
+    bases=['A','C','G','T']
+    conditional_probabilities_list=[position_givenA,position_givenC,position_givenG,position_givenT]
+    for i,conditional_probabilities in enumerate(conditional_probabilities_list):
+        plot_positional_bias(outdir=outdir, sample=sample, window=window,
+                     base=bases[i], probabilities=conditional_probabilities)
+    
+    if verbose == True:
         print('--------------------Generating Dinucleotide Sequences----------------------')
         print('Initiating ' + str(cpus) + ' cpus.')
     pool = multiprocessing.Pool(cpus)
@@ -84,19 +97,7 @@ def run_dinucleotide_generator(verbose, outdir, sample,
                  window=window, ls=ls, seq_type='simulated')
 
     if verbose == True:
-        print('-----------Plotting positional biases-----------')
-    ###plotting mononucleotide probabilites from the experimental data
-    mono_probabilities=mono_probability_counter(ls=ls, window=window, outdir=outdir, sample=sample)
-    plot_positional_bias(outdir=outdir, sample=sample, window=window, 
-                         base='not_conditional', probabilities=mono_probabilities)
-
-    ###plotting conditional probabilities from the experimental data
-    bases=['A','C','G','T']
-    conditional_probabilities_list= [position_givenA,position_givenC,position_givenG,position_givenT]
-    for i,conditional_probabilities in enumerate(conditional_probabilities_list):
-        plot_positional_bias(outdir=outdir, sample=sample, window=window,
-                     base=bases[i], probabilities=conditional_probabilities)
-
+        print('-----------Plotting positional biases from simulated data-----------')
     ###plotting mononucleotide probabilities from the new dinucleotide simulated data
     get_sequences(verbose=verbose, genome=(outdir + '/generated_sequences/' + str(sample) + '_simulated.fa'), 
                   outdir=outdir, sample=sample, plot_dinucleotide=True)
