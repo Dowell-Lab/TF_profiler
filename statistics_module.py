@@ -17,17 +17,15 @@ def run_statistics_module(verbose, outdir, sample, window, motifs, traditional_m
     md_score_df = define_unchanging_md_scores(verbose=verbose, md_score_df=md_score_df, 
                                                   outliers_fraction=outliers_fraction)
     md_score_df, slope, intercept, sigma_cutoff = determine_significance(verbose=verbose, outdir=outdir, 
-                                                                         md_score_df=md_score_df, pval_cutoff=pval_cutoff,
-                                                                        idit='')
+                                                                         md_score_df=md_score_df, pval_cutoff=pval_cutoff)
 
-#     color_types=['significance','gc_content', 'elliptic_fit']
-#     for color_type in color_types:
-    color_type='significance'
-    plot_rbg(verbose=verbose, outdir=outdir, sample=sample, 
-             color_type=color_type, md_score_df=md_score_df, 
-             slope=slope, intercept=intercept, 
-             sigma_cutoff=sigma_cutoff, 
-             idit=3)
+    color_types=['significance','gc_content', 'elliptic_fit']
+    for color_type in color_types:
+        color_type='significance'
+        plot_rbg(verbose=verbose, outdir=outdir, sample=sample, 
+                 color_type=color_type, md_score_df=md_score_df, 
+                 slope=slope, intercept=intercept, 
+                 sigma_cutoff=sigma_cutoff)
     if plot_barcode != 'none':
         plot_barcodes(verbose=verbose, outdir=outdir, sample=sample,
                       window=window, pval_cutoff=pval_cutoff, md_score_df=md_score_df, 
@@ -71,7 +69,7 @@ def define_unchanging_md_scores(verbose, md_score_df, outliers_fraction):
     md_score_df['elliptic_outlier'] = y_pred_elliptic    
     return md_score_df
 
-def determine_significance(verbose, outdir, md_score_df, pval_cutoff, idit):
+def determine_significance(verbose, outdir, md_score_df, pval_cutoff):
     fit_unchanging_md_score = md_score_df[md_score_df['elliptic_outlier'] == 1]
     X = fit_unchanging_md_score['md_score_sim'].values.reshape(-1, 1)  # values converts it into a numpy array
     Y = fit_unchanging_md_score['md_score_exp'].values.reshape(-1, 1)  # -1 means that calculate the dimension of rows, but have 1 column
@@ -109,7 +107,7 @@ def determine_significance(verbose, outdir, md_score_df, pval_cutoff, idit):
     md_score_df=md_score_df.sort_values(by='pval')
     
     md_score_df['significance'] = md_score_df.apply(lambda row: significance_caller(row, pval_cutoff), axis=1)
-    md_score_df.to_csv(outdir+'/scores/md_score_experimental_vs_simulated_significance'+str(idit)+'.txt',sep='\t',index=False)
+    md_score_df.to_csv(outdir+'/scores/md_score_experimental_vs_simulated_significance.txt',sep='\t',index=False)
     return md_score_df, slope, intercept, sigma_cutoff
 
 def significance_caller(row, pval_cutoff):
@@ -120,7 +118,7 @@ def significance_caller(row, pval_cutoff):
     else:
         return 'Not Significant'
        
-def plot_rbg(verbose, outdir, sample, color_type, md_score_df, slope, intercept, sigma_cutoff, idit):
+def plot_rbg(verbose, outdir, sample, color_type, md_score_df, slope, intercept, sigma_cutoff):
     os.system('mkdir -p ' + outdir + '/plots')
     if verbose=='True':
         print('Plotting rbg. Coloring is based on '+ color_type +'.')
@@ -139,17 +137,17 @@ def plot_rbg(verbose, outdir, sample, color_type, md_score_df, slope, intercept,
     ax.set_xlabel('Nucleotide Background MD-Score',fontsize=30,fontweight='bold')
     ax.set_ylabel('Observed MD-Score',fontsize=30,fontweight='bold')
     
-#     if color_type == 'elliptic_fit':
-#         md_score_df_group_outlier = md_score_df.groupby('elliptic_outlier')
-#         for outlier,md_score_df_outlier in md_score_df_group_outlier:
-#             if outlier == -1:
-#                 color='grey'
-#             elif outlier == 1:
-#                 color='blue'
-#             ax.scatter(md_score_df_outlier['md_score_sim'], 
-#                md_score_df_outlier['md_score_exp'], color=color, alpha=0.7)
-#         ax.plot([0, max_x*1.1], [intercept, max_x*slope*1.1+intercept], 
-#                 color='black', linestyle='--', alpha = 0.7)
+    if color_type == 'elliptic_fit':
+        md_score_df_group_outlier = md_score_df.groupby('elliptic_outlier')
+        for outlier,md_score_df_outlier in md_score_df_group_outlier:
+            if outlier == -1:
+                color='grey'
+            elif outlier == 1:
+                color='blue'
+            ax.scatter(md_score_df_outlier['md_score_sim'], 
+               md_score_df_outlier['md_score_exp'], color=color, alpha=0.7)
+        ax.plot([0, max_x*1.1], [intercept, max_x*slope*1.1+intercept], 
+                color='black', linestyle='--', alpha = 0.7)
     
     if color_type=='significance':
         md_score_df_group_significance = md_score_df.groupby('significance')
@@ -183,7 +181,7 @@ def plot_rbg(verbose, outdir, sample, color_type, md_score_df, slope, intercept,
         cax = divider.append_axes('right', size='5%', pad=0.05)
         plt.colorbar(gc, cax=cax, orientation='vertical')
     
-    plt.savefig(outdir + '/plots/rbg_'+ color_type + str(idit) +'.png', bbox_inches='tight')
+    plt.savefig(outdir + '/plots/rbg_'+ color_type + '.png', bbox_inches='tight')
 
 def plot_barcodes(verbose, outdir, sample, window, pval_cutoff, md_score_df, plot_barcode):
     try:

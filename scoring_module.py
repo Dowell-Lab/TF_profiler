@@ -68,10 +68,10 @@ def get_distance_tfs(verbose, outdir, sample, seq_type, simulated_pre_scan):
 def get_sequence_numbers(outdir, sample, annotation):
     with open(annotation, 'r') as an:
         sequence_num = len(an.readlines())
-    os.system('bedtools intersect -wa -a '+ annotation + 
+    os.system('bedtools intersect -wa -u -a '+ annotation + 
          ' -b ' + '/Users/tajo5912/rbg/assets/hg38_refseq_merge_1000bp_TSSs.bed > ' +
          outdir + '/annotations/'+sample+'_promoters.bed')
-#     os.system('bedtools intersect -wa -a '+ annotation + 
+#     os.system('bedtools intersect -wa -u -a '+ annotation + 
 #          ' -b ' + '/Users/tajo5912/rbg/assets/mm10_refseq_unique_TSSs_500bp_merge.sorted.bed > ' +
 #          outdir + '/annotations/'+sample+'_promoters.bed')    
         
@@ -83,27 +83,6 @@ def calculate_traditional_md_score(tf_list, inputs):
     verbose, outdir, sample, window, seq_type, sequence_num, promoter_num, simulated_pre_scan = inputs
     if simulated_pre_scan is not None and seq_type=='simulated':
         distance_df = pd.read_csv(simulated_pre_scan+'/'+tf_list+'_distances.txt', sep='\t')
-        distance_df['region'] = distance_df.region_id.str.split(';',expand=True)[[1]]
-
-        promoter_df = distance_df[distance_df['type'] == 'promoter']
-        promoter_regions = []
-        for i in range(promoter_num):
-            promoter_regions.append('region_'+str(i+1))
-        promoter_df = promoter_df[promoter_df['region'].isin(promoter_regions)]
-        promoter_df = promoter_df.drop(['region'],axis=1)
-
-        enhancer_num = sequence_num-promoter_num
-        enhancer_df = distance_df[distance_df['type'] == 'enhancer']
-        enhancer_regions = []
-        for i in range(enhancer_num):
-            enhancer_regions.append('region_'+str(i+1))
-        enhancer_df = enhancer_df[enhancer_df['region'].isin(enhancer_regions)]
-        enhancer_df = enhancer_df.drop(['region'],axis=1)
-        distance_df = pd.concat([promoter_df,enhancer_df])
-        
-        os.system('mkdir -p ' + outdir + '/distances/simulated/')
-        distance_df.to_csv(outdir + '/distances/simulated/' + tf_list +'_distances.txt',
-                          sep='\t', index=False)
     else:
         distance_df = pd.read_csv(outdir+'/distances/'+seq_type+'/'+tf_list+'_distances.txt', sep='\t')
 
