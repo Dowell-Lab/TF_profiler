@@ -1,20 +1,21 @@
-# TF Profiler Overview #
+# TF Profiler #
+## TF Profiler Overview ##
 
 
 Difference from paper- does not internally split enhancers and promoters (adding now)
 
-# Installation and Requirements #
+## Installation and Requirements ##
 module load python/3.6.3
 module load bedtools/2.25.0 (https://bedtools.readthedocs.io/en/latest/content/installation.html)
 module load samtools/1.8 (https://www.htslib.org/download/)
 module load meme/5.0.3 (https://meme-suite.org/meme/doc/install.html?man_type=web)
 
-# Testing TF Profiler #
+## Testing TF Profiler ##
 
 
 
-# Running TF Profiler #
-## Required input files ##
+## Running TF Profiler ##
+### Required input files ###
 Genome fasta file (.fa)
 Motif file (.meme)
 Bidirectional annotation file (.bed) -- describe how to do this (https://github.com/Dowell-Lab/Bidirectional-Flow built, tfit run https://github.com/Dowell-Lab/Tfit) --tfit_prelim \
@@ -22,11 +23,11 @@ Bidirectional annotation file (.bed) -- describe how to do this (https://github.
 --tfit_split_model \
 --savebidirs \
 
-## Required flags ##
+### Required flags ###
 
-## Example run ##
+### Example run ###
 
-## Additional Run Notes ##
+### Additional Run Notes ###
 For lower memory usage and speed use mononucleotide simulaiton
 Default simulation is n=nregions provided (not a million)
 
@@ -36,7 +37,7 @@ Quickest run time and lowest mem usage will be to use prescan motifs and precalc
 -k 
 
 
-# Help Message #
+## Help Message ##
 
 ```
 [-h] [-v [True/False]] -a annotation.bed -o /full/path/to/output -s
@@ -104,10 +105,10 @@ Scoring and Statistics Arguments:
 
 
 
-# Example Output #
+## Example Output ##
 Describe directory structure
 Describe key outputs
 
-# Contact Information #
+## Contact Information ##
 
 [Taylor Jones](tcaron360@gmail.com)
