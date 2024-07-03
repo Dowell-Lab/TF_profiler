@@ -25,6 +25,13 @@ Bidirectional annotation file (.bed) -- describe how to do this (https://github.
 
 ### Required flags ###
 
+### Assets ###
+For MD-score pre-gen and split (-sr flag?)
+This folder contains MD-scores for all TFs in HOCOMOCO v11.
+Each file contains the MD-scores based on the relative percentage of promoters from 10-50% for every 2% steps. The concentration of promoters impacts the simulated MD-scores (ie more promoters, higher MD-score for GC rich motifs, lower for AT rich motifs). For this reason simulations within 2% of the promoter content of the experimental/observed data can be used as an appropriate null hypothesis.
+The files have names such as: promoter0.5_seed118_md_score_one_hit_per_region_quality; this is a 0.5 (or 50%) promoter containing experiment, the seed used to generate the MD-scores was 118 (same as the publication). A seed is needed as 1 million promoter and 1 million enhancer sequences were generated. These were subset down to 1 million total with relative proportions of enhancers and promoters. The sequences within these sets that were selected by seed 118 for reproducibility.
+Finally the score was calculated by only keeping ONE motif instance per region. The region used for scoring was the highest QUALITY region as defined by the fimo output.
+
 ### Example run ###
 
 ### Additional Run Notes ###
