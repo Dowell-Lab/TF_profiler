@@ -1,14 +1,66 @@
 # TF Profiler #
 ## TF Profiler Overview ##
-
-
-Difference from paper- does not internally split enhancers and promoters (adding now)
+TF Profiler is a stand alone program that predicts the basally active TFs in a given cellular context. This is not intended to be a differential analysis (please see [TFEA](https://github.com/Dowell-Lab/TFEA)), but rather an assessment of TFs active in the control/baseline conditions. This is achieved by comparing motif co-occurences with bidirectional transcription in experimental control conditions (observed- WT/Vehicle) to those generated from a set of simulated sequences that reflect position specific nucleotide biases (expectation).
 
 ## Installation and Requirements ##
+Please see the requirements.txt file. This program was written in python 3.6.3.
+It is highly recommended to run this program in a virtual environment.
+
+The python requirements can be installed following these steps:
+1. Copy the repository.
+```
+git clone https://github.com/Dowell-Lab/TF_profiler.git
+```
+2. Verify that you are running python 3.6.3.
+If on the FIJI compute cluster you can load in python 3.6.3, otherwise make sure this is the python version you are using.
+```
 module load python/3.6.3
-module load bedtools/2.25.0 (https://bedtools.readthedocs.io/en/latest/content/installation.html)
-module load samtools/1.8 (https://www.htslib.org/download/)
-module load meme/5.0.3 (https://meme-suite.org/meme/doc/install.html?man_type=web)
+which python3
+```
+
+3. Create and activate your virtual environment.
+```
+python3 -m venv venv_TF_Profiler
+source venv_TF_Profiler/bin/activate
+which python
+```
+Now your active python should be associated with the virtual environment that you just created.
+
+4. Install package requirements using the requirements.txt file.
+```
+pip install -r <path/to/TF_Profiler>/requirements.txt
+```
+Verify that each requirement was successfully downloaded. See requirements here:
+```
+cycler==0.11.0
+joblib==1.1.1
+kiwisolver==1.3.1
+matplotlib==3.3.4
+numpy==1.19.5
+pandas==1.1.5
+Pillow==8.4.0
+pyparsing==3.0.7
+python-dateutil==2.8.2
+pytz==2022.6
+scikit-learn==0.24.2
+scipy==1.5.4
+six==1.16.0
+threadpoolctl==3.1.0
+```
+
+Additional dependencies:
+If you are on the FIJI compute cluster you may load the following modules:
+```
+module load python/3.6.3
+module load bedtools/2.25.0
+module load samtools/1.8
+module load meme/5.0.3 
+```
+
+Otherwise you can install these programs here:
+[bedtools download](https://bedtools.readthedocs.io/en/latest/content/installation.html)
+[samtools download](https://www.htslib.org/download/)
+[meme suite download](https://meme-suite.org/meme/doc/install.html?man_type=web)
 
 ## Testing TF Profiler ##
 
