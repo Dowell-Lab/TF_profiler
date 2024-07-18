@@ -2,6 +2,15 @@
 ## TF Profiler Overview ##
 TF Profiler is a stand alone program that predicts the basally active TFs in a given cellular context. This is not intended to be a differential analysis (please see [TFEA](https://github.com/Dowell-Lab/TFEA)), but rather an assessment of TFs active in the control/baseline conditions. This is achieved by comparing motif co-occurences with bidirectional transcription in experimental control conditions (observed- WT/Vehicle) to those generated from a set of simulated sequences that reflect position specific nucleotide biases (expectation).
 
+
+
+
+This program is associated the publication [A transcription factor (TF) inference method that broadly measures TF activity and identifies mechanistically distinct TF networks](https://www.biorxiv.org/content/10.1101/2024.03.15.585303v1).
+
+Citation:
+```
+```
+
 ## Installation and Requirements ##
 Please see the requirements.txt file. This program was written in python 3.6.3.
 It is highly recommended to run this program in a virtual environment.
