@@ -218,7 +218,6 @@ You will specify the output directory- from there multple subdirectories will be
 In the output you will find:
 1. annotations
    - sample_experimental_prescan_windowed.bed - if using the -k flag. Windows and adds identifier to bidirectional annotation file.
-     or
    - sample_experimental_centered.bed and sample_experimental_window.bed - if using -x flag. Centers/windows and adds identifier to annotation bidirectional annotation file.
    - sample_promoters.bed - the bidirectional annotations that fall within promoter regions.
    - sample_simulated_centered.bed and sample_simulated_window.bed - if using the -d flag. Creates annotation files for simulated data after it has been formated onto chromosomes for the fimo scan.
@@ -226,7 +225,6 @@ In the output you will find:
    - Contains two folders, one for each simulated and experimental data- within these folders there are distance tables. These are tables that contain all motif hits within +/-window (1500bp) of the center of all annotated bidirections.
    - Simulated will be missing if using the -k flag
 Example distance output:
-```
 
 | region_id      | motif_id     | distance | distance_rank | quality_rank |
 | -------------- | ------------ | -------- | ------------- | ------------ |
@@ -235,7 +233,6 @@ Example distance output:
 | chr1;region_20 | chr1;motif_5 | -742     | 1             | 3            |
 | chr1;region_20 | chr1;motif_6 | -751     | 2             | 2            |
 
-```
 3. generated_sequences
    - sample_conditional_probabilites_givenX.tsv - the conditional probablities calculated from the underlying sequences of the provided bidirectional annotation file. One for each A/T/C/G.
    - sanple_position1_dinucleotide_probabilities.tsv - probabilities for the 16 possible dinucleotide combinations in positions 1 and 2 to set the seed for the remaining base generation.
