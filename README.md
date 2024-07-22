@@ -9,6 +9,7 @@ This program is associated the publication [A transcription factor (TF) inferenc
 
 Citation:
 ```
+Jones, Taylor, et al. "A transcription factor (TF) inference method that broadly measures TF activity and identifies mechanistically distinct TF networks." bioRxiv (2024): 2024-03.
 ```
 
 ## Installation and Requirements ##
@@ -80,17 +81,28 @@ Otherwise you can install these programs here:
 
 ## Running TF Profiler ##
 ### Required input files ###
-Genome fasta file (.fa)
-Motif file (.meme)
-Bidirectional annotation file (.bed) -- describe how to do this (https://github.com/Dowell-Lab/Bidirectional-Flow built, tfit run https://github.com/Dowell-Lab/Tfit) --tfit_prelim \
+There are three main input files required to run TF profiler. These are:
+1. Genome fasta file (.fa)  -- We used hg38 availabe [here](https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/) in our study.
+2. Motif file (.meme) -- We used the [HOCOMOCO](https://hocomoco11.autosome.org/) core set in our study. This meme file can be found in the assets folder.
+
+And most importantly-
+3. Bidirectional annotation file (.bed)
+This bidirectional annotation file is derived from the experimental data. For this reason we highly recommend using this [Bidrectional-Flow pipeline](https://github.com/Dowell-Lab/Bidirectional-Flow) to run [Tfit](https://github.com/Dowell-Lab/Tfit). The precise annotation of the center of the bidirectional regions is essential for the success of the MD-score metric (used in TF Profiler).
+
+Suggested flags for the [Bidrectional-Flow pipeline](https://github.com/Dowell-Lab/Bidirectional-Flow):
+```
+--tfit_prelim \
 --prelim_process \
 --tfit_split_model \
---savebidirs \
+--savebidirs
+```
 
-### Required flags ###
+Along with the requirements for the genome fasta (-g/--genome), the motif file (-m/--motifs) and the bidirecitonal annotation file (-a/--annotation), TF Profiler also requires a path to output the results (-o/--outdir) and a root name for all output files (-s/--sample).
 
 ### Assets ###
-For MD-score pre-gen and split (-sr flag?)
+#For MD-score pre-gen and split (-sr flag?)
+
+
 This folder contains MD-scores for all TFs in HOCOMOCO v11.
 Each file contains the MD-scores based on the relative percentage of promoters from 10-50% for every 2% steps. The concentration of promoters impacts the simulated MD-scores (ie more promoters, higher MD-score for GC rich motifs, lower for AT rich motifs). For this reason simulations within 2% of the promoter content of the experimental/observed data can be used as an appropriate null hypothesis.
 The files have names such as: promoter0.5_seed118_md_score_one_hit_per_region_quality; this is a 0.5 (or 50%) promoter containing experiment, the seed used to generate the MD-scores was 118 (same as the publication). A seed is needed as 1 million promoter and 1 million enhancer sequences were generated. These were subset down to 1 million total with relative proportions of enhancers and promoters. The sequences within these sets that were selected by seed 118 for reproducibility.
