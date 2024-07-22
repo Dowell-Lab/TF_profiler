@@ -84,6 +84,7 @@ Otherwise you can install these programs here:
 There are three main input files required to run TF profiler. These are:
 1. Genome fasta file (.fa)  -We used hg38 availabe [here](https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/) in our study.
 2. Motif file (.meme) -We used the [HOCOMOCO](https://hocomoco11.autosome.org/) core set in our study. This meme file can be found in the assets folder.
+
 And most importantly-
 
 3. Bidirectional annotation file (.bed)
