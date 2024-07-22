@@ -2,9 +2,6 @@
 ## TF Profiler Overview ##
 TF Profiler is a stand alone program that predicts the basally active TFs in a given cellular context. This is not intended to be a differential analysis (please see [TFEA](https://github.com/Dowell-Lab/TFEA)), but rather an assessment of TFs active in the control/baseline conditions. This is achieved by comparing motif co-occurences with bidirectional transcription in experimental control conditions (observed- WT/Vehicle) to those generated from a set of simulated sequences that reflect position specific nucleotide biases (expectation).
 
-
-
-
 This program is associated the publication [A transcription factor (TF) inference method that broadly measures TF activity and identifies mechanistically distinct TF networks](https://www.biorxiv.org/content/10.1101/2024.03.15.585303v1).
 
 Citation:
@@ -130,20 +127,14 @@ See run_rbg_hoco_example.sbatch in assets for addtional information regarding th
 
 There is a --continue_run option if a submitted job fails.
 
-### Additional Run Notes ###
-Motif scanning is time consuming, and distance calculations are memory intensive
+Motif scanning is time consuming, and distance calculations are memory intensive. There are multiple flags to minimize recsource requirements:
 
-For lower memory usage and speed use mononucleotide simulaiton
-Default simulation is n=nregions provided (not a million)
-
-
-Quickest run time and lowest mem usage will be to use prescan motifs and precalc distances
--q HOCOMOCOv11_full_HUMAN_genomic_motif_hits
--k 
-
+1. For sequence simulation, it is recommended to use position specific dinucleotide frequencies (-d True). This indicates that the *next* base simulated is informed by the *previous* base in the sequence. Biological sequences (and TF motifs) tend to have higher order patterns rather than being completely independent of the surrounding bases (eg CpG islands). However, this simulation is more memory intensive than a mononucleotide position specific sequence (ie ignorant of the surrounding bases). Thus, the -l flag was created as a simplistic version of the model to reduce resource costs. To use this version of the expectation model set -d False and -l True.
+2. The default number of simulated sequences is set to the number of regions in the bidirectional annotation file provided. For example, if you provided a bed file of 22,654 regions, exactly 22,654 regions will be simulated based on the position specific dinucleotide frequencies of that annotation file. The -n flag enables the user to vary the number of simulated sequences, with more sequences providing a more stable expectation value. As -n increases however, so do the resource costs. In the publication 1M sequences were simulated, this is resource intensive and likely unnecessary for most applications. Two additional related flags are -s (seed), where you can set the simulation seed for consistency and -i (chromosome number) where you can vary the number of simulated chromosomes fed into the fimo scan. The -i flag defaults to approximately ~11.5M bases per simulated chromosome. When the number of bases per simulated chromosome gets too small (or too large) fimo scan greatly slows.
+3. The -q flag allows you to use motif hits that are pre-scanned genome wide. This flag enables the time consuming fimo motif scan to be performed *once* and can subsequently be re-applied to multiple datasets. To use this flag provide a complete path to a directory containing bed files that annotate motif hits genome wide. An example of how to generate these files can be found [here](https://github.com/Dowell-Lab/motif_scanning_and_distances). The bed format is partially derived from the fimo output text file, thus is slightly irregular. The columns follow this pattern: ['chr','start', 'stop', 'score', 'strand', 'motif_id'], where the motif_id must be *unique* to every region within the bed file. Note: On FIJI these are found here: /scratch/Shares/dowell/tajo/hoco_flat/motifs
+4. The -k flag is similar to the -q flag but for simulated data sets. This flag enables the user to provide pre-calculated distance calculations for the expectation data. This allows both the time consuming motif scanning step and the memory intensive distance calculations to be performed *once* and reapplied to mutliple datasets. To use this flag provide a complete path to a directory containing distance.txt files from simulated data. A way to generate this data is run TF_Profiler once, and on subsequent runs use the -k flag to the /output/distances/simulated directory (see outputs explained below). In this case, be sure to check that the base composition bias is similar across the runs to ensure an appropriate expectation model. The columns of the distance table follow this pattern: ['region_id','motif_id','distance','distance_rank','quality_rank']. Note: On FIJI these are found here: /scratch/Shares/dowell/tajo/hoco_background_distances. This version is simulated from separate promoter and enhancer populations, and combined (as done in the publication).
 
 ## Help Message ##
-
 ```
 [-h] [-v [True/False]] -a annotation.bed -o /full/path/to/output -s
          name_of_sample [-c int] [-r [True/False]] [-l [True/False]]
