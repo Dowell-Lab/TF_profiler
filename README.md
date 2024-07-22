@@ -97,6 +97,8 @@ Suggested flags for the [Bidirectional-Flow pipeline](https://github.com/Dowell-
 --tfit_split_model \
 --savebidirs
 ```
+For biological replicates we recommend using [muMerge](https://github.com/Dowell-Lab/mumerge) to generate a master annotation file before running through TF Profiler.
+
 
 Along with the requirements for the genome fasta (-g/--genome), the motif file (-m/--motifs) and the bidirecitonal annotation file (-a/--annotation), TF Profiler also requires a path to output the results (-o/--outdir) and a root name for all output files (-s/--sample).
 
@@ -206,11 +208,26 @@ Scoring and Statistics Arguments:
                         This argument runs the barcode plotting module. There are 4 options for this flag. 1, significance or True plots barcodes only for significant TFs as defined by the p-value cutoff. 2 or all plots all barcodes from the MD-score file. 3,only functions if you provide <tf_name> and plots only the barcode of the TF specified. Note: if the string is ambigous then it will plot ALL TFs that fit the <tf_name> parameters within the md-score file. If no TF matches the string provided then nothing will be plotted. 4, none or False results in no barcodes plotted. Default: significance
 ```
 
-
-
 ## Example Output ##
-Describe directory structure
-Describe key outputs
+You will specify the output directory- from there multple subdirectories will be generated. "Sample" will be substituted for whatever rootname is specified by the required -s flag.
+
+In the output you will find:
+1. annotations
+   - sample_experimental_prescan_windowed.bed
+   - sample_promoters.bed
+2. distances
+   - experimental
+   - simulated
+3. generated_sequences
+   - 
+4. plots
+   -
+5. scores
+   -
+6. temp
+    -
+
+It is recommended to remove temp right away as the extracted .fa files are rather bulky.
 
 ## Contact Information ##
 
