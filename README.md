@@ -210,14 +210,13 @@ In the output you will find:
    - experimental
    - simulated
 3. generated_sequences
-   - 
+   -  df
 4. plots
-   -
+   - df
 5. scores
-   -
+   - df
 6. temp
-    -
-
+    - df
 It is recommended to remove temp right away as the extracted .fa files are rather bulky.
 
 ## Contact Information ##
