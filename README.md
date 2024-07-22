@@ -225,7 +225,18 @@ In the output you will find:
 2. distances
    - Contains two folders, one for each simulated and experimental data- within these folders there are distance tables. These are tables that contain all motif hits within +/-window (1500bp) of the center of all annotated bidirections.
    - Simulated will be missing if using the -k flag
-4. generated_sequences
+Example distance output:
+```
+
+| region_id      | motif_id     | distance | distance_rank | quality_rank |
+| -------------- | ------------ | -------- | ------------- | ------------ |
+| chr1;region_16 | chr1;motif_1 | 56       | 1             | 1            |
+| chr1;region_20 | chr1;motif_4 | 1303     | 3             | 1            | 
+| chr1;region_20 | chr1;motif_5 | -742     | 1             | 3            |
+| chr1;region_20 | chr1;motif_6 | -751     | 2             | 2            |
+
+```
+3. generated_sequences
    - sample_conditional_probabilites_givenX.tsv - the conditional probablities calculated from the underlying sequences of the provided bidirectional annotation file. One for each A/T/C/G.
    - sanple_position1_dinucleotide_probabilities.tsv - probabilities for the 16 possible dinucleotide combinations in positions 1 and 2 to set the seed for the remaining base generation.
    - sample_mononucleotide_probabilites.tsv - the position specific mononucleotide probabilities calculated from the underlying sequences of the provided bidirectional annotation file. See sample_single_position_BaseDistribution.png and sample_single_position_SmoothedBaseDistribution.png in plots for the plots related to this data. There should be a sharp uptick in GC composition around position 0.
@@ -233,16 +244,16 @@ In the output you will find:
    - sample_simulated.chrom.sizes - chromosome size file for simulated sequences.
    - sample_simulated.fa - fasta file of simulated sequences formated onto chromosomes for motif scanning.
    - sample_simulated.fa.fai - index for simulated fasta file.
-5. motifs
+4. motifs
    - experimental
    - simulated
-6. plots
+5. plots
    - *single_position_*BaseDistribution as previously described shows the position specific mononucleotide base distributions from both experimental and simulated data. Both are plotted as a qc metric and should be roughly identical, with a sharp increase in GC composition around position 0.
    - sample_probability_givenX_*BaseDistribution shows plots related to the position specific conditional probabilities for A/T/C/G.
-7. scores
+6. scores
    - simulated_traditional_md_score.txt
    - experimental_traditional_md_score.txt
-8. temp - contains intermediate files. It is recommended to remove temp right away.
+7. temp - contains intermediate files. It is recommended to remove temp right away.
 
 ## Contact Information ##
 
