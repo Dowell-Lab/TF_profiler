@@ -217,13 +217,13 @@ You will specify the output directory- from there multple subdirectories will be
 
 In the output you will find:
 1. annotations
-   - sample_experimental_prescan_windowed.bed - if using the -k flag. Windows and adds identifier to bidirectional annotation file.
-   - sample_experimental_centered.bed and sample_experimental_window.bed - if using -x flag. Centers/windows and adds identifier to annotation bidirectional annotation file.
-   - sample_promoters.bed - the bidirectional annotations that fall within promoter regions.
-   - sample_simulated_centered.bed and sample_simulated_window.bed - if using the -d flag. Creates annotation files for simulated data after it has been formated onto chromosomes for the fimo scan.
-2. distances
-   - Contains two folders, one for each simulated and experimental data- within these folders there are distance tables. These are tables that contain all motif hits within +/-window (1500bp) of the center of all annotated bidirections.
-   - Simulated will be missing if using the -k flag
+- sample_experimental_prescan_windowed.bed - if using the -k flag. Windows and adds identifier to bidirectional annotation file.
+- sample_experimental_centered.bed and sample_experimental_window.bed - if using -x flag. Centers/windows and adds identifier to annotation bidirectional annotation file.
+- sample_promoters.bed - the bidirectional annotations that fall within promoter regions.
+- sample_simulated_centered.bed and sample_simulated_window.bed - if using the -d flag. Creates annotation files for simulated data after it has been formated onto chromosomes for the fimo scan.
+3. distances
+- Contains two folders, one for each simulated and experimental data- within these folders there are distance tables. These are tables that contain all motif hits within +/-window (1500bp) of the center of all annotated bidirections.
+- Simulated will be missing if using the -k flag
 Example distance output:
 
 | region_id      | motif_id     | distance | distance_rank | quality_rank |
@@ -233,11 +233,11 @@ Example distance output:
 | chr1;region_20 | chr1;motif_5 | -742     | 1             | 3            |
 | chr1;region_20 | chr1;motif_6 | -751     | 2             | 2            |
 
-- The region_id matches the ids in the provided annotation file.
-- The motif_id matches the 6th column of the motif bedfiles for whichever TF you are looking at from fimo_scan.
-- The distance is the distance from the center of the annotated region (ie the bidir) to the center of the motif for whatever TF you're looking at. All motif distances within +/-1500bp of the center of the bidirectional were calculated. A negative distance indicates upstream of the center of the bidirectional, whereas a positive distance indicates downstream of the bidirectional. Typically, we consider a motif hit within +/-150bp of the center of the bidirectional as "active."
-- Distance rank is for the case where there are 2+ motif hits within ONE bidirectional. The example here is chr1;region_20... For the distance rank 1 means closest to the center.
-- Quality rank is for the case where there are 2+ motif hits within ONE bidirectional. The example here is chr1;region_20... For the quality rank 1 means the highest confidence fimo call.
+   - The region_id matches the ids in the provided annotation file.
+   - The motif_id matches the 6th column of the motif bedfiles for whichever TF you are looking at from fimo_scan.
+   - The distance is the distance from the center of the annotated region (ie the bidir) to the center of the motif for whatever TF you're looking at. All motif distances within +/-1500bp of the center of the bidirectional were calculated. A negative distance indicates upstream of the center of the bidirectional, whereas a positive distance indicates downstream of the bidirectional. Typically, we consider a motif hit within +/-150bp of the center of the bidirectional as "active."
+   - Distance rank is for the case where there are 2+ motif hits within ONE bidirectional. The example here is chr1;region_20... For the distance rank 1 means closest to the center.
+   - Quality rank is for the case where there are 2+ motif hits within ONE bidirectional. The example here is chr1;region_20... For the quality rank 1 means the highest confidence fimo call.
 
 3. generated_sequences
    - sample_conditional_probabilites_givenX.tsv - the conditional probablities calculated from the underlying sequences of the provided bidirectional annotation file. One for each A/T/C/G.
