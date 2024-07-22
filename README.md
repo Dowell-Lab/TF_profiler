@@ -216,14 +216,16 @@ Scoring and Statistics Arguments:
 You will specify the output directory- from there multple subdirectories will be generated. "Sample" will be substituted for whatever rootname is specified by the required -s flag.
 
 In the output you will find:
+
 1. annotations
-- sample_experimental_prescan_windowed.bed - if using the -k flag. Windows and adds identifier to bidirectional annotation file.
-- sample_experimental_centered.bed and sample_experimental_window.bed - if using -x flag. Centers/windows and adds identifier to annotation bidirectional annotation file.
-- sample_promoters.bed - the bidirectional annotations that fall within promoter regions.
-- sample_simulated_centered.bed and sample_simulated_window.bed - if using the -d flag. Creates annotation files for simulated data after it has been formated onto chromosomes for the fimo scan.
-3. distances
-- Contains two folders, one for each simulated and experimental data- within these folders there are distance tables. These are tables that contain all motif hits within +/-window (1500bp) of the center of all annotated bidirections.
-- Simulated will be missing if using the -k flag
+   - sample_experimental_prescan_windowed.bed - if using the -k flag. Windows and adds identifier to bidirectional annotation file.
+   - sample_experimental_centered.bed and sample_experimental_window.bed - if using -x flag. Centers/windows and adds identifier to annotation bidirectional annotation file.
+   - sample_promoters.bed - the bidirectional annotations that fall within promoter regions.
+   - sample_simulated_centered.bed and sample_simulated_window.bed - if using the -d flag. Creates annotation files for simulated data after it has been formated onto chromosomes for the fimo scan.
+
+2. distances
+   - Contains two folders, one for each simulated and experimental data- within these folders there are distance tables. These are tables that contain all motif hits within +/-window (1500bp) of the center of all annotated bidirections.
+   - Simulated will be missing if using the -k flag
 Example distance output:
 
 | region_id      | motif_id     | distance | distance_rank | quality_rank |
