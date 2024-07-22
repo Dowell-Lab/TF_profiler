@@ -219,18 +219,29 @@ In the output you will find:
 1. annotations
    - sample_experimental_prescan_windowed.bed
    - sample_promoters.bed
+   - test_simulated_centered.bed
+   - test_simulated_window.bed
 2. distances
    - experimental
    - simulated
 3. generated_sequences
-   -  df
-4. plots
-   - df
-5. scores
-   - df
-6. temp
-    - df
-It is recommended to remove temp right away as the extracted .fa files are rather bulky.
+   - sample_conditional_probabilites_givenX.tsv - the conditional probablities calculated from the underlying sequences of the provided bidirectional annotation file. One for each A/T/C/G.
+   - sanple_position1_dinucleotide_probabilities.tsv - probabilities for the 16 possible dinucleotide combinations in positions 1 and 2 to set the seed for the remaining base generation.
+   - sample_mononucleotide_probabilites.tsv - the position specific mononucleotide probabilities calculated from the underlying sequences of the provided bidirectional annotation file. See sample_single_position_BaseDistribution.png and sample_single_position_SmoothedBaseDistribution.png in plots for the plots related to this data. There should be a sharp uptick in GC composition around position 0.
+   - dinucleotide_mononucleotide_probabilites.tsv - the position specific mononucleotide probablitilies back calculated from the simulated sequences (should be roughly equal to sample_mononucleotide_probabilites.tsv). See dinucleotide_single_position_BaseDistribution.png and dinucleotide_single_position_SmoothedBaseDistribution.png in plots for the plots related to this data.
+   - sample_simulated.chrom.sizes - chromosome size file for simulated sequences.
+   - sample_simulated.fa - fasta file of simulated sequences formated onto chromosomes for motif scanning.
+   - sample_simulated.fa.fai - index for simulated fasta file.
+4. motifs
+   - experimental
+   - simulated
+5. plots
+   - *single_position_*BaseDistribution as previously described shows the position specific mononucleotide base distributions from both experimental and simulated data. Both are plotted as a qc metric and should be roughly identical, with a sharp increase in GC composition around position 0.
+   - sample_probability_givenX_*BaseDistribution shows plots related to the position specific conditional probabilities for A/T/C/G.
+6. scores
+   - simulated_traditional_md_score.txt
+   - experimental_traditional_md_score.txt
+7. temp - contains intermediate files. It is recommended to remove temp right away.
 
 ## Contact Information ##
 
