@@ -194,8 +194,8 @@ FIMO Arguments:
                         directory containing pre-scanned motif hits in bed format over the whole genome obtained using the same fimo parameters (background and threshold) as the simulated dataset. If path is set experimental genome scan will be skipped and pre-scanned motif hits will be used instead.
   -x [True/False], --experimental_fimo [True/False]
                         will run fimo over only the annotated regions from the experimental dataset. True will increase run time. Recommended if you are only looking at a single dataset. If False, provide destination of the pre-scanned genome using the "--pre_scan" flag. Default: False.
-  -k /full/path/to/pre-scanned/motifs, --simulated_pre_scan /full/path/to/pre-scanned/motifs
-                        directory containing pre-scanned motif hits in bed format over a simulated dataset obtained using the same fimo parameters (background and threshold) as the experimental dataset. If path is set simulated scan will be skipped and pre-scanned motif hits will be used instead. NOTE: Make sure there are sufficient simulated sequences to match the total number of experimental sequences.
+  -k /full/path/to/pre-calc/distances, --simulated_pre_scan /full/path/to/pre-calc/distances
+                        directory containing pre-calculated distances from a simulated dataset obtained using the same fimo parameters (background and threshold) as the experimental dataset. If path is set simulated scan will be skipped and pre-scanned motif hits will be used instead. NOTE: Make sure there are sufficient simulated sequences.
   -m motif_database.meme, --motifs motif_database.meme
                         meme file for TFs
   -t float, --threshold_fimo float
@@ -217,14 +217,15 @@ You will specify the output directory- from there multple subdirectories will be
 
 In the output you will find:
 1. annotations
-   - sample_experimental_prescan_windowed.bed
-   - sample_promoters.bed
-   - test_simulated_centered.bed
-   - test_simulated_window.bed
+   - sample_experimental_prescan_windowed.bed - if using the -k flag. Windows and adds identifier to bidirectional annotation file.
+     or
+   - sample_experimental_centered.bed and sample_experimental_window.bed - if using -x flag. Centers/windows and adds identifier to annotation bidirectional annotation file.
+   - sample_promoters.bed - the bidirectional annotations that fall within promoter regions.
+   - sample_simulated_centered.bed and sample_simulated_window.bed - if using the -d flag. Creates annotation files for simulated data after it has been formated onto chromosomes for the fimo scan.
 2. distances
-   - experimental
-   - simulated
-3. generated_sequences
+   - Contains two folders, one for each simulated and experimental data- within these folders there are distance tables. These are tables that contain all motif hits within +/-window (1500bp) of the center of all annotated bidirections.
+   - Simulated will be missing if using the -k flag
+4. generated_sequences
    - sample_conditional_probabilites_givenX.tsv - the conditional probablities calculated from the underlying sequences of the provided bidirectional annotation file. One for each A/T/C/G.
    - sanple_position1_dinucleotide_probabilities.tsv - probabilities for the 16 possible dinucleotide combinations in positions 1 and 2 to set the seed for the remaining base generation.
    - sample_mononucleotide_probabilites.tsv - the position specific mononucleotide probabilities calculated from the underlying sequences of the provided bidirectional annotation file. See sample_single_position_BaseDistribution.png and sample_single_position_SmoothedBaseDistribution.png in plots for the plots related to this data. There should be a sharp uptick in GC composition around position 0.
@@ -232,16 +233,16 @@ In the output you will find:
    - sample_simulated.chrom.sizes - chromosome size file for simulated sequences.
    - sample_simulated.fa - fasta file of simulated sequences formated onto chromosomes for motif scanning.
    - sample_simulated.fa.fai - index for simulated fasta file.
-4. motifs
+5. motifs
    - experimental
    - simulated
-5. plots
+6. plots
    - *single_position_*BaseDistribution as previously described shows the position specific mononucleotide base distributions from both experimental and simulated data. Both are plotted as a qc metric and should be roughly identical, with a sharp increase in GC composition around position 0.
    - sample_probability_givenX_*BaseDistribution shows plots related to the position specific conditional probabilities for A/T/C/G.
-6. scores
+7. scores
    - simulated_traditional_md_score.txt
    - experimental_traditional_md_score.txt
-7. temp - contains intermediate files. It is recommended to remove temp right away.
+8. temp - contains intermediate files. It is recommended to remove temp right away.
 
 ## Contact Information ##
 
