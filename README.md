@@ -233,6 +233,12 @@ Example distance output:
 | chr1;region_20 | chr1;motif_5 | -742     | 1             | 3            |
 | chr1;region_20 | chr1;motif_6 | -751     | 2             | 2            |
 
+- The region_id matches the ids in the provided annotation file.
+- The motif_id matches the 6th column of the motif bedfiles for whichever TF you are looking at from fimo_scan.
+- The distance is the distance from the center of the annotated region (ie the bidir) to the center of the motif for whatever TF you're looking at. All motif distances within +/-1500bp of the center of the bidirectional were calculated. A negative distance indicates upstream of the center of the bidirectional, whereas a positive distance indicates downstream of the bidirectional. Typically, we consider a motif hit within +/-150bp of the center of the bidirectional as "active."
+- Distance rank is for the case where there are 2+ motif hits within ONE bidirectional. The example here is chr1;region_20... For the distance rank 1 means closest to the center.
+- Quality rank is for the case where there are 2+ motif hits within ONE bidirectional. The example here is chr1;region_20... For the quality rank 1 means the highest confidence fimo call.
+
 3. generated_sequences
    - sample_conditional_probabilites_givenX.tsv - the conditional probablities calculated from the underlying sequences of the provided bidirectional annotation file. One for each A/T/C/G.
    - sanple_position1_dinucleotide_probabilities.tsv - probabilities for the 16 possible dinucleotide combinations in positions 1 and 2 to set the seed for the remaining base generation.
