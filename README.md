@@ -88,9 +88,9 @@ There are three main input files required to run TF profiler. These are:
 And most importantly-
 
 3. Bidirectional annotation file (.bed)
-This bidirectional annotation file is derived from the experimental data. For this reason we highly recommend using this [Bidrectional-Flow pipeline](https://github.com/Dowell-Lab/Bidirectional-Flow) to run [Tfit](https://github.com/Dowell-Lab/Tfit). The precise annotation of the center of the bidirectional regions is essential for the success of the MD-score metric (used in TF Profiler).
+This bidirectional annotation file is derived from the experimental data. For this reason we highly recommend using this [Bidirectional-Flow pipeline](https://github.com/Dowell-Lab/Bidirectional-Flow) to run [Tfit](https://github.com/Dowell-Lab/Tfit). The precise annotation of the center of the bidirectional regions is essential for the success of the MD-score metric (used in TF Profiler).
 
-Suggested flags for the [Bidrectional-Flow pipeline](https://github.com/Dowell-Lab/Bidirectional-Flow):
+Suggested flags for the [Bidirectional-Flow pipeline](https://github.com/Dowell-Lab/Bidirectional-Flow):
 ```
 --tfit_prelim \
 --prelim_process \
@@ -110,8 +110,27 @@ The files have names such as: promoter0.5_seed118_md_score_one_hit_per_region_qu
 Finally the score was calculated by only keeping ONE motif instance per region. The region used for scoring was the highest QUALITY region as defined by the fimo output.
 
 ### Example run ###
+A run command may look something like this:
+```
+python /path/to/TF_Profiler \
+-g hg38.fa \
+-a bidirectional_annotation.bed \
+-o /path/to/output \
+-s meaningful_name \
+-v \
+-c 12 \
+-m HOCOMOCOv11_core_HUMAN_mono_meme_format.meme \
+-b enhancer_background_flat \
+-d True \
+-x True
+```
+See run_rbg_hoco_example.sbatch in assets for addtional information regarding the sbatch set-up.
+
+There is a --continue_run option if a submitted job fails.
 
 ### Additional Run Notes ###
+Motif scanning is time consuming, and distance calculations are memory intensive
+
 For lower memory usage and speed use mononucleotide simulaiton
 Default simulation is n=nregions provided (not a million)
 
