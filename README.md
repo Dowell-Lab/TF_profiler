@@ -149,7 +149,7 @@ Lastly, run_rbg_hoco_example.sbatch is an example sbatch script for submission o
          name_of_sample [-c int] [-r [True/False]] [-l [True/False]]
          [-d [True/False]] -g genome.fa [-e int] [-w int] [-n int] [-i int]
          [-q /full/path/to/pre-scanned/motifs] [-x [True/False]]
-         [-k /full/path/to/pre-scanned/motifs] -m motif_database.meme
+         [-k /full/path/to/pre-calc/distances] -m motif_database.meme
          [-t float] [-b background.csv] [-u [True/False]] [-p float]
          [-y [significance/all/<tf_name>/none]]
 
@@ -205,7 +205,7 @@ Scoring and Statistics Arguments:
   -p float, --pval_cutoff float
                         Cutoff for defining enrichment/depetion. Default: 0.05
   -y [significance/all/<tf_name>/none], --plot_barcode [significance/all/<tf_name>/none]
-                        This argument runs the barcode plotting module. There are 4 options for this flag. 1, significance or True plots barcodes only for significant TFs as defined by the p-value cutoff. 2 or all plots all barcodes from the MD-score file. 3,only functions if you provide <tf_name> and plots only the barcode of the TF specified. Note: if the string is ambigous then it will plot ALL TFs that fit the <tf_name> parameters within the md-score file. If no TF matches the string provided then nothing will be plotted. 4, none or False results in no barcodes plotted. Default: significance
+                        This argument runs the barcode plotting module. There are 4 options for this flag. 1, significance or True plots barcodes only for significant TFs as defined by the p-value cutoff. 2 or all plots all barcodes from the MD-score file. 3,only functions if you provide <tf_name> and plots only the barcode of the TF specified. Note: if the string is ambigous then it will plot ALL TFs that fit the <tf_name> parameters within the md-score file. If no TF matches the string provided then nothing will be plotted. 4, none or False results in no barcodes plotted. Default: None
 ```
 
 ## Output Description ##
