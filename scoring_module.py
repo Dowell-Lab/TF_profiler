@@ -14,7 +14,6 @@ def run_scoring_module(verbose, outdir, sample, window, cpus, seq_type, simulate
         print('--------------Pulling in Annotation and Getting List of Motifs---------------')
     scoring_dirs(verbose=verbose, outdir=outdir, seq_type=seq_type)
     tf_list = get_distance_tfs(verbose=verbose, outdir=outdir, sample=sample, seq_type=seq_type, simulated_pre_scan=simulated_pre_scan)
-    #if traditional_md ==True: ##build in flag for different scoring options
     sequence_num, promoter_num = get_sequence_numbers(outdir=outdir, sample=sample, annotation=annotation)
 
     if verbose == True: 
@@ -68,12 +67,13 @@ def get_distance_tfs(verbose, outdir, sample, seq_type, simulated_pre_scan):
 def get_sequence_numbers(outdir, sample, annotation):
     with open(annotation, 'r') as an:
         sequence_num = len(an.readlines())
+        
+    directory = os.path.abspath(__file__)
+    assetbed = os.path.join(directory, 'assets/hg38_refseq_merge_1000bp_TSSs.bed') #mm10_refseq_unique_TSSs_1000bp_merge.sorted.bed
+
     os.system('bedtools intersect -wa -u -a '+ annotation + 
-         ' -b ' + '/Users/tajo5912/rbg/assets/hg38_refseq_merge_1000bp_TSSs.bed > ' +
+         ' -b ' + assetbed + ' > ' +
          outdir + '/annotations/'+sample+'_promoters.bed')
-#     os.system('bedtools intersect -wa -u -a '+ annotation + 
-#          ' -b ' + '/Users/tajo5912/rbg/assets/mm10_refseq_unique_TSSs_500bp_merge.sorted.bed > ' +
-#          outdir + '/annotations/'+sample+'_promoters.bed')    
         
     with open(outdir + '/annotations/'+sample+'_promoters.bed', 'r') as pro:
         promoter_num = len(pro.readlines())
@@ -85,7 +85,10 @@ def calculate_traditional_md_score(tf_list, inputs):
         distance_df = pd.read_csv(simulated_pre_scan+'/'+tf_list+'_distances.txt', sep='\t')
     else:
         distance_df = pd.read_csv(outdir+'/distances/'+seq_type+'/'+tf_list+'_distances.txt', sep='\t')
-
+    
+    distance_df = distance_df.sort_values(by=['region_id', 'distance_rank', 'quality_rank'])
+    distance_df=distance_df.drop_duplicates(subset=['region_id'], keep='first')
+    
     hlarge=len(distance_df)+1
     hsmall= len(distance_df[(distance_df['distance'] <= window*0.1) & (distance_df['distance'] >= -window*0.1)])+1
     md_score = hsmall/hlarge

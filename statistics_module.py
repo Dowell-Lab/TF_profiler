@@ -12,8 +12,8 @@ from sklearn.covariance import EllipticEnvelope
 from scipy.stats import norm
 
 ######################################### MD Score Main #########################################
-def run_statistics_module(verbose, outdir, sample, window, motifs, traditional_md, pval_cutoff, outliers_fraction, plot_barcode):
-    md_score_df = import_md_scores(outdir=outdir,sample=sample, motifs=motifs, traditional_md=traditional_md)
+def run_statistics_module(verbose, outdir, sample, window, motifs, traditional_md, pval_cutoff, outliers_fraction, plot_barcode, seq_type):
+    md_score_df = import_md_scores(outdir=outdir,sample=sample, motifs=motifs, traditional_md=traditional_md, seq_type=seq_type)
     md_score_df = define_unchanging_md_scores(verbose=verbose, md_score_df=md_score_df, 
                                                   outliers_fraction=outliers_fraction)
     md_score_df, slope, intercept, sigma_cutoff = determine_significance(verbose=verbose, outdir=outdir, 
@@ -21,7 +21,6 @@ def run_statistics_module(verbose, outdir, sample, window, motifs, traditional_m
 
     color_types=['significance','gc_content', 'elliptic_fit']
     for color_type in color_types:
-        color_type='significance'
         plot_rbg(verbose=verbose, outdir=outdir, sample=sample, 
                  color_type=color_type, md_score_df=md_score_df, 
                  slope=slope, intercept=intercept, 
@@ -32,11 +31,13 @@ def run_statistics_module(verbose, outdir, sample, window, motifs, traditional_m
                       plot_barcode=plot_barcode)
 
 ######################################### MD Score Functions #########################################
-def import_md_scores(outdir,sample,motifs,traditional_md):
+def import_md_scores(outdir,sample,motifs,traditional_md,seq_type):
     if traditional_md == True:
         exp_md_score_df = pd.read_csv(outdir+'/scores/experimental_traditional_md_score.txt', sep='\t')
-        sim_md_score_df = pd.read_csv(outdir+'/scores/simulated_traditional_md_score.txt', sep='\t')
-    #     sim_md_score_df = pd.read_csv(outdir+'/scores/mononucleotide_simulated_traditional_md_score.txt', sep='\t')
+        if seq_type=='simulated':
+            sim_md_score_df = pd.read_csv(outdir+'/scores/simulated_traditional_md_score.txt', sep='\t')
+        elif seq_type=='mononucleotide_simulated':
+            sim_md_score_df = pd.read_csv(outdir+'/scores/mononucleotide_simulated_traditional_md_score.txt', sep='\t')
     
     md_score_df = exp_md_score_df.merge(sim_md_score_df, on='tf', suffixes=('_exp', '_sim'))
     
@@ -83,11 +84,8 @@ def determine_significance(verbose, outdir, md_score_df, pval_cutoff):
         print('The slope of the linear regression is ' + str(slope) +'.')
         print('The intercept is '+ str(intercept) + '.')
     
-#     slope=1.05
-#     intercept=0
     fit_unchanging_md_score = md_score_df[md_score_df['elliptic_outlier'] == 1]
     residuals = (fit_unchanging_md_score['md_score_exp'] - fit_unchanging_md_score['md_score_sim']*slope)
-#     residuals = (md_score_df['md_score_exp'] - md_score_df['md_score_sim']*slope)
 
     (mu, sigma) = norm.fit(residuals)
 
@@ -101,7 +99,6 @@ def determine_significance(verbose, outdir, md_score_df, pval_cutoff):
 
     all_residuals= (md_score_df['md_score_exp'] - md_score_df['md_score_sim']*slope)
     z_scores = (all_residuals - mu)/sigma
-#     z_scores = (residuals - mu)/sigma
     p_values = norm.sf(abs(z_scores))
     md_score_df['pval'] = p_values
     md_score_df=md_score_df.sort_values(by='pval')
