@@ -270,10 +270,8 @@ Example motif bed file:
 **5. plots**
    - *single_position_BaseDistribution as previously described shows the position specific mononucleotide base distributions from both experimental and simulated data. Both are plotted as a qc metric and should be roughly identical, with a sharp increase in GC composition around position 0.
    - sample_probability_givenX_BaseDistribution shows plots related to the position specific conditional probabilities for A/T/C/G.
-
-rbg_'+ color_type + '.png'
-['significance','gc_content', 'elliptic_fit']
-
+   - rbg_significance, rbg_gc_content, rbg_elliptic_fit all plot the observed MD-score (y-axis) vs the expected MD-score (x-axis). The only difference in these three plots is the coloration. Significance marks enrichment/depletion. GC_content marks the range of GC content of the TF motifs. Elliptical fit shows which points (inliers) are fit to the linear regression, and thus which residuals are fit to the normal distribution to assess significance.
+     
 **6. scores**
    - There are two MD-score output files, simulated_traditional_md_score.txt and experimental_traditional_md_score.txt. These files contain intermediate information regarding the calculation of MD-scores.
    - **md_score_experimental_vs_simulated_significance.txt** is the main results file.
@@ -283,8 +281,8 @@ Example results file:
 | -------------- | ------------ | -------- | ------------- | ------------ | -|-|
 | NRF1_HUMAN.H11MO.0.A | 0.69 | 0.40       | 0.47             | -1       | 9.1e-78 | Depleted|
 | ELK4_HUMAN.H11MO.0.A | 0.63 | 0.41       | 0.41             | -1       | 5.8e-68 | Depleted|
-| E2F5_HUMAN.H11MO.0.B | 0.62 | 0.32       | 0.40             | -1       | 1.4e-49 | Depleted|
-| ELK1_HUMAN.H11MO.0.B | 0.59 | 0.29       | 0.38             | -1       | 1.1e-44 | Depleted|
+| FOXC2_HUMAN.H11MO.0.D | 0.37 | 0.09       | 0.08            | 1       | 0.13 | Not Significant|
+| KAISO_HUMAN.H11MO.1.A | 0.61 | 0.38       | 0.16             | -1       | 2.3e-52 | Enriched|
 
    - tf is the TF name (from the MEME file)
    - percent_gc is the GC content of the motif derived from the MEME file.
