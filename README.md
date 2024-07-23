@@ -279,8 +279,8 @@ Example results file:
 
 | tf      | percent_gc     | md_score_exp | md_score_sim | elliptic_outlier | pval |significance|
 | -------------- | ------------ | -------- | ------------- | ------------ | -|-|
-| NRF1_HUMAN.H11MO.0.A | 0.69 | 0.40       | 0.47             | -1       | 9.1e-78 | Depleted|
-| ELK4_HUMAN.H11MO.0.A | 0.63 | 0.41       | 0.41             | -1       | 5.8e-68 | Depleted|
+| TBX3_HUMAN.H11MO.0.C | 0.56 | 0.09       | 0.11             | 1       | 0.018 | Depleted|
+| STAT1_HUMAN.H11MO.1.A | 0.37 | 0.05       | 0.08             | 1       | 0.06 | Not Significant|
 | FOXC2_HUMAN.H11MO.0.D | 0.37 | 0.09       | 0.08            | 1       | 0.13 | Not Significant|
 | KAISO_HUMAN.H11MO.1.A | 0.61 | 0.38       | 0.16             | -1       | 2.3e-52 | Enriched|
 
