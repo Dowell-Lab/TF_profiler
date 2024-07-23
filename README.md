@@ -72,10 +72,6 @@ Otherwise you can install these programs here:
 
 [meme suite download](https://meme-suite.org/meme/doc/install.html?man_type=web)
 
-## Testing TF Profiler ##
-
-
-
 ## Running TF Profiler ##
 ### Required input files ###
 There are three main input files required to run TF profiler. These are:
