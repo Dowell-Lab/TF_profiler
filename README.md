@@ -217,13 +217,13 @@ You will specify the output directory- from there multple subdirectories will be
 
 In the output you will find:
 
-1. annotations
+**1. annotations**
    - sample_experimental_prescan_windowed.bed - if using the -k flag. Windows and adds identifier to bidirectional annotation file.
    - sample_experimental_centered.bed and sample_experimental_window.bed - if using -x flag. Centers/windows and adds identifier to annotation bidirectional annotation file.
    - sample_promoters.bed - the bidirectional annotations that fall within promoter regions.
    - sample_simulated_centered.bed and sample_simulated_window.bed - if using the -d flag. Creates annotation files for simulated data after it has been formated onto chromosomes for the fimo scan.
 
-2. distances
+**2. distances**
    - Contains two folders, one for each simulated and experimental data- within these folders there are distance tables. These are tables that contain all motif hits within +/-window (1500bp) of the center of all annotated bidirections.
    - Simulated will be missing if using the -k flag
 Example distance output:
@@ -241,7 +241,7 @@ Example distance output:
    - Distance rank is for the case where there are 2+ motif hits within ONE bidirectional. The example here is chr1;region_20... For the distance rank 1 means closest to the center.
    - Quality rank is for the case where there are 2+ motif hits within ONE bidirectional. The example here is chr1;region_20... For the quality rank 1 means the highest confidence fimo call.
 
-3. generated_sequences
+**3. generated_sequences**
    - sample_conditional_probabilites_givenX.tsv - the conditional probablities calculated from the underlying sequences of the provided bidirectional annotation file. One for each A/T/C/G.
    - sanple_position1_dinucleotide_probabilities.tsv - probabilities for the 16 possible dinucleotide combinations in positions 1 and 2 to set the seed for the remaining base generation.
    - sample_mononucleotide_probabilites.tsv - the position specific mononucleotide probabilities calculated from the underlying sequences of the provided bidirectional annotation file. See sample_single_position_BaseDistribution.png and sample_single_position_SmoothedBaseDistribution.png in plots for the plots related to this data. There should be a sharp uptick in GC composition around position 0.
@@ -250,7 +250,7 @@ Example distance output:
    - sample_simulated.fa - fasta file of simulated sequences formated onto chromosomes for motif scanning.
    - sample_simulated.fa.fai - index for simulated fasta file.
 
-4. motifs
+**4. motifs**
    - Contains two folders, one for each simulated and experimental data- within these folders there are motif bed files. These are annotations of every motif hit within the windowed input regions.
    - This directory will be missing if using the -k and -q flags are used.
 Example motif bed file:
@@ -267,14 +267,14 @@ Example motif bed file:
    - Strand the motif hit was on (+/-).
    - The motif_id matches the 2nd column of the distance table for a given TF.
 
-5. plots
+**5. plots**
    - *single_position_BaseDistribution as previously described shows the position specific mononucleotide base distributions from both experimental and simulated data. Both are plotted as a qc metric and should be roughly identical, with a sharp increase in GC composition around position 0.
    - sample_probability_givenX_BaseDistribution shows plots related to the position specific conditional probabilities for A/T/C/G.
 
 rbg_'+ color_type + '.png'
 ['significance','gc_content', 'elliptic_fit']
 
-6. scores
+**6. scores**
    - There are two MD-score output files, simulated_traditional_md_score.txt and experimental_traditional_md_score.txt. These files contain intermediate information regarding the calculation of MD-scores.
    - **md_score_experimental_vs_simulated_significance.txt** is the main results file.
 Example results file:
@@ -292,7 +292,7 @@ Example results file:
    - elliptical outlier is 1/-1 (True/False) where all values that are FALSE (ie are not outliers) are used to generate the linear regression. The residuals of the FALSE elliptical outlier points are fit to a normal distribution. It's this distribution that is contrasted with all residuals to attribute significance values as shown in column 6-pval.
    - The final column, significance, contains three possible values, Depleted (the experimental/observed MD-score is lower than expectation), Enriched (the experimental/observed MD-score is lower than expectation) or Not Significant. The user can specify the p-value cut-off with the -p flag. The default is 0.05.
 
-7. temp - contains intermediate files. It is recommended to remove temp right away.
+**7. temp** - contains intermediate files. It is recommended to remove temp right away.
 
 ## Contact Information ##
 
