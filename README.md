@@ -120,13 +120,13 @@ There is a --continue_run option if a submitted job fails.
 
 Motif scanning is time consuming, and distance calculations are memory intensive. There are multiple flags to minimize recsource requirements:
 
-1. For sequence simulation, it is recommended to use position specific dinucleotide frequencies (-d True). This indicates that the *next* base simulated is informed by the *previous* base in the sequence. Biological sequences (and TF motifs) tend to have higher order patterns rather than being completely independent of the surrounding bases (eg CpG islands). However, this simulation is more memory intensive than a mononucleotide position specific sequence (ie ignorant of the surrounding bases). Thus, the -l flag was created as a simplistic version of the model to reduce resource costs. To use this version of the expectation model set -d False and -l True.
+1. For sequence simulation, it is recommended to use position specific dinucleotide frequencies (-d True). This indicates that the **next** base simulated is informed by the **previous** base in the sequence. Biological sequences (and TF motifs) tend to have higher order patterns rather than being completely independent of the surrounding bases (eg CpG islands). However, this simulation is more memory intensive than a mononucleotide position specific sequence (ie ignorant of the surrounding bases). Thus, the -l flag was created as a simplistic version of the model to reduce resource costs. To use this version of the expectation model set -d False and -l True.
    
 2. The default number of simulated sequences is set to the number of regions in the bidirectional annotation file provided. For example, if you provided a bed file of 22,654 regions, exactly 22,654 regions will be simulated based on the position specific dinucleotide frequencies of that annotation file. The -n flag enables the user to vary the number of simulated sequences, with more sequences providing a more stable expectation value. As -n increases however, so do the resource costs. In the publication 1M sequences were simulated, this is resource intensive and likely unnecessary for most applications. Two additional related flags are -s (seed), where you can set the simulation seed for consistency and -i (chromosome number) where you can vary the number of simulated chromosomes fed into the fimo scan. The -i flag defaults to approximately ~11.5M bases per simulated chromosome. When the number of bases per simulated chromosome gets too small (or too large) fimo scan greatly slows.
    
-3. The -q flag allows you to use motif hits that are pre-scanned genome wide. This flag enables the time consuming fimo motif scan to be performed *once* and can subsequently be re-applied to multiple datasets. To use this flag provide a complete path to a directory containing bed files that annotate motif hits genome wide. An example of how to generate these files can be found [here](https://github.com/Dowell-Lab/motif_scanning_and_distances). The bed format is partially derived from the fimo output text file, thus is slightly irregular. The columns follow this pattern: ['chr','start', 'stop', 'score', 'strand', 'motif_id'], where the motif_id must be *unique* to every region within the bed file. The motif pre-scans must match the TF PSSM names within the MEME file. Note: On FIJI these are found here: /scratch/Shares/dowell/tajo/hoco_flat/motifs, or can be found on [Zenodo](https://zenodo.org/records/12797230) in HOCOMOCOv11_full_HUMAN_genomic_motif_hits.zip.
+3. The -q flag allows you to use motif hits that are pre-scanned genome wide. This flag enables the time consuming fimo motif scan to be performed **once** and can subsequently be re-applied to multiple datasets. To use this flag provide a complete path to a directory containing bed files that annotate motif hits genome wide. An example of how to generate these files can be found [here](https://github.com/Dowell-Lab/motif_scanning_and_distances). The bed format is partially derived from the fimo output text file, thus is slightly irregular. The columns follow this pattern: ['chr','start', 'stop', 'score', 'strand', 'motif_id'], where the motif_id must be **unique** to every region within the bed file. The motif pre-scans must match the TF PSSM names within the MEME file. Note: On FIJI these are found here: /scratch/Shares/dowell/tajo/hoco_flat/motifs, or can be found on [Zenodo](https://zenodo.org/records/12797230) in HOCOMOCOv11_full_HUMAN_genomic_motif_hits.zip.
    
-4. The -k flag is similar to the -q flag but for simulated data sets. This flag enables the user to provide pre-calculated distance calculations for the expectation data. This allows both the time consuming motif scanning step and the memory intensive distance calculations to be performed *once* and reapplied to mutliple datasets. To use this flag provide a complete path to a directory containing distance.txt files from simulated data. A way to generate this data is run TF_Profiler once, and on subsequent runs use the -k flag to the /output/distances/simulated directory (see outputs explained below). In this case, be sure to check that the base composition bias is similar across the runs to ensure an appropriate expectation model. The columns of the distance table follow this pattern: ['region_id','motif_id','distance','distance_rank','quality_rank']. Note: On FIJI these are found here: /scratch/Shares/dowell/tajo/hoco_background_distances, or can be found on [Zenodo](https://zenodo.org/records/12797230) in distance_tables_simulated.zip. This version is simulated from separate promoter and enhancer populations, and combined (as done in the publication).
+4. The -k flag is similar to the -q flag but for simulated data sets. This flag enables the user to provide pre-calculated distance calculations for the expectation data. This allows both the time consuming motif scanning step and the memory intensive distance calculations to be performed **once** and reapplied to mutliple datasets. To use this flag provide a complete path to a directory containing distance.txt files from simulated data. A way to generate this data is run TF_Profiler once, and on subsequent runs use the -k flag to the /output/distances/simulated directory (see outputs explained below). In this case, be sure to check that the base composition bias is similar across the runs to ensure an appropriate expectation model. The columns of the distance table follow this pattern: ['region_id','motif_id','distance','distance_rank','quality_rank']. Note: On FIJI these are found here: /scratch/Shares/dowell/tajo/hoco_background_distances, or can be found on [Zenodo](https://zenodo.org/records/12797230) in distance_tables_simulated.zip. This version is simulated from separate promoter and enhancer populations, and combined (as done in the publication).
 
 ### Assets ###
 The assets folder contains useful files for running TF Profiler.
@@ -143,7 +143,7 @@ md_scores.zip contains simulated MD-scores generated from 1M sequences. These MD
 ![condProbs](https://github.com/user-attachments/assets/bf489eb8-f1b2-4892-99df-0876b36035cb)
 These probabilities were derived from hg38_promoters.bed and hg38_enhancers.bed which can be found on [Zenodo](https://zenodo.org/records/12797230).
 
-Each file in md_scores.zip contains the MD-scores calculated for all TFs in HOCOMOCO v11 (n=732). The difference across the files is the relative amount of promoters used within the sequence simulation. The concentration of promoters impacts the simulated MD-scores (ie more promoters, higher MD-score for GC rich motifs, lower for AT rich motifs). For this reason simulations within 2% of the experimentally observed promoter content can be used as an appropriate null hypothesis. The files have names such as: promoter0.22_seed118_md_score_one_hit_per_region_quality; this is a 0.22 (or 22%) promoter containing experiment, the seed used to generate the MD-scores was 118 (same as the publication). A seed is needed as 1 million promoter and 1 million enhancer sequences were generated. These were subset down to 1 million total with set proportions of enhancers and promoters. The sequences within these sets that were selected by seed 118 for reproducibility. Finally, the score was calculated by only keeping one motif instance per region. The region used for scoring was the nearest to the *center of a given bidirectional region*.
+Each file in md_scores.zip contains the MD-scores calculated for all TFs in HOCOMOCO v11 (n=732). The difference across the files is the relative amount of promoters used within the sequence simulation. The concentration of promoters impacts the simulated MD-scores (ie more promoters, higher MD-score for GC rich motifs, lower for AT rich motifs). For this reason simulations within 2% of the experimentally observed promoter content can be used as an appropriate null hypothesis. The files have names such as: promoter0.22_seed118_md_score_one_hit_per_region_quality; this is a 0.22 (or 22%) promoter containing experiment, the seed used to generate the MD-scores was 118 (same as the publication). A seed is needed as 1 million promoter and 1 million enhancer sequences were generated. These were subset down to 1 million total with set proportions of enhancers and promoters. The sequences within these sets that were selected by seed 118 for reproducibility. Finally, the score was calculated by only keeping one motif instance per region. The region used for scoring was the nearest to the **center of a given bidirectional region**.
 
 Lastly, run_rbg_hoco_example.sbatch is an example sbatch script for submission of FIJI.
 
@@ -212,7 +212,7 @@ Scoring and Statistics Arguments:
                         This argument runs the barcode plotting module. There are 4 options for this flag. 1, significance or True plots barcodes only for significant TFs as defined by the p-value cutoff. 2 or all plots all barcodes from the MD-score file. 3,only functions if you provide <tf_name> and plots only the barcode of the TF specified. Note: if the string is ambigous then it will plot ALL TFs that fit the <tf_name> parameters within the md-score file. If no TF matches the string provided then nothing will be plotted. 4, none or False results in no barcodes plotted. Default: significance
 ```
 
-## Example Output ##
+## Output Description ##
 You will specify the output directory- from there multple subdirectories will be generated. "Sample" will be substituted for whatever rootname is specified by the required -s flag.
 
 In the output you will find:
@@ -268,13 +268,29 @@ Example motif bed file:
    - The motif_id matches the 2nd column of the distance table for a given TF.
 
 5. plots
-   - *single_position_*BaseDistribution as previously described shows the position specific mononucleotide base distributions from both experimental and simulated data. Both are plotted as a qc metric and should be roughly identical, with a sharp increase in GC composition around position 0.
-   - sample_probability_givenX_*BaseDistribution shows plots related to the position specific conditional probabilities for A/T/C/G.
-   - 
+   - *single_position_BaseDistribution as previously described shows the position specific mononucleotide base distributions from both experimental and simulated data. Both are plotted as a qc metric and should be roughly identical, with a sharp increase in GC composition around position 0.
+   - sample_probability_givenX_BaseDistribution shows plots related to the position specific conditional probabilities for A/T/C/G.
+
+rbg_'+ color_type + '.png'
+['significance','gc_content', 'elliptic_fit']
 
 6. scores
-   - simulated_traditional_md_score.txt
-   - experimental_traditional_md_score.txt
+   - There are two MD-score output files, simulated_traditional_md_score.txt and experimental_traditional_md_score.txt. These files contain intermediate information regarding the calculation of MD-scores.
+   - **md_score_experimental_vs_simulated_significance.txt** is the main results file.
+Example results file:
+
+| tf      | percent_gc     | md_score_exp | md_score_sim | elliptic_outlier | pval |significance|
+| -------------- | ------------ | -------- | ------------- | ------------ | -|-|
+| NRF1_HUMAN.H11MO.0.A | 0.69 | 0.40       | 0.47             | -1       | 9.1e-78 | Depleted|
+| ELK4_HUMAN.H11MO.0.A | 0.63 | 0.41       | 0.41             | -1       | 5.8e-68 | Depleted|
+| E2F5_HUMAN.H11MO.0.B | 0.62 | 0.32       | 0.40             | -1       | 1.4e-49 | Depleted|
+| ELK1_HUMAN.H11MO.0.B | 0.59 | 0.29       | 0.38             | -1       | 1.1e-44 | Depleted|
+
+   - tf is the TF name (from the MEME file)
+   - percent_gc is the GC content of the motif derived from the MEME file.
+   - md_score_exp/md_score_sim are the MD-scores calculated from the experimental/observed data, and from the simulated/expected data.
+   - elliptical outlier is 1/-1 (True/False) where all values that are FALSE (ie are not outliers) are used to generate the linear regression. The residuals of the FALSE elliptical outlier points are fit to a normal distribution. It's this distribution that is contrasted with all residuals to attribute significance values as shown in column 6-pval.
+   - The final column, significance, contains three possible values, Depleted (the experimental/observed MD-score is lower than expectation), Enriched (the experimental/observed MD-score is lower than expectation) or Not Significant. The user can specify the p-value cut-off with the -p flag. The default is 0.05.
 
 7. temp - contains intermediate files. It is recommended to remove temp right away.
 
