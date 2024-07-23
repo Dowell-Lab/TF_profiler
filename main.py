@@ -185,12 +185,12 @@ def run(verbose, outdir, sample, genome, annotation,
             run_statistics_module(verbose=verbose, outdir=outdir, 
                                   sample=sample, window=window, motifs=motifs, traditional_md=traditional_md, 
                                   pval_cutoff=pval_cutoff, outliers_fraction=0.25, plot_barcode=plot_barcode,
-                                 seq_type='simulated')
+                                 seq_type='mononucleotide_simulated')
         else:
             run_statistics_module(verbose=verbose, outdir=outdir, 
                                   sample=sample, window=window, motifs=motifs, traditional_md=traditional_md, 
                                   pval_cutoff=pval_cutoff, outliers_fraction=0.25, plot_barcode=plot_barcode,
-                                 seq_type='mononucleotide_simulated')
+                                 seq_type='simulated')
     if verbose == True:
         print('--------------RBG Workflow Complete--------------')
         print('Stop time: %s' % str(datetime.datetime.now()))

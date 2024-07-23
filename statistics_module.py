@@ -32,12 +32,13 @@ def run_statistics_module(verbose, outdir, sample, window, motifs, traditional_m
 
 ######################################### MD Score Functions #########################################
 def import_md_scores(outdir,sample,motifs,traditional_md,seq_type):
-    if traditional_md == True:
-        exp_md_score_df = pd.read_csv(outdir+'/scores/experimental_traditional_md_score.txt', sep='\t')
-        if seq_type=='simulated':
-            sim_md_score_df = pd.read_csv(outdir+'/scores/simulated_traditional_md_score.txt', sep='\t')
-        elif seq_type=='mononucleotide_simulated':
-            sim_md_score_df = pd.read_csv(outdir+'/scores/mononucleotide_simulated_traditional_md_score.txt', sep='\t')
+    
+    exp_md_score_df = pd.read_csv(outdir+'/scores/experimental_traditional_md_score.txt', sep='\t')
+
+    if seq_type=='simulated':
+        sim_md_score_df = pd.read_csv(outdir+'/scores/simulated_traditional_md_score.txt', sep='\t')
+    elif seq_type=='mononucleotide_simulated':
+        sim_md_score_df = pd.read_csv(outdir+'/scores/mononucleotide_simulated_traditional_md_score.txt', sep='\t')
     
     md_score_df = exp_md_score_df.merge(sim_md_score_df, on='tf', suffixes=('_exp', '_sim'))
     
