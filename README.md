@@ -249,15 +249,32 @@ Example distance output:
    - sample_simulated.chrom.sizes - chromosome size file for simulated sequences.
    - sample_simulated.fa - fasta file of simulated sequences formated onto chromosomes for motif scanning.
    - sample_simulated.fa.fai - index for simulated fasta file.
+
 4. motifs
-   - experimental
-   - simulated
+   - Contains two folders, one for each simulated and experimental data- within these folders there are motif bed files. These are annotations of every motif hit within the windowed input regions.
+   - This directory will be missing if using the -k and -q flags are used.
+Example motif bed file:
+
+| chr      | start     | stop | score | strand | motif_id |
+| -------------- | ------------ | -------- | ------------- | ------------ |
+| chr1 | 22299 | 22318       | 12.7727          | +            | chr1;motif_1 |
+| chr1 | 31718 | 31737     | 12.7576             | +          | chr1;motif_2 |
+| chr1 | 33517 | 33536     | 12.7727             | -            | chr1;motif_3 |
+| chr1 | 43588 | 43607     | 13.1818             | +            | chr1;motif_4 |
+
+   - The chr/start/stop are genomic locations for motif hits in the genome.
+   - Score is the score attributed to how well the motif matches that genomic location assigned by fimo.
+   - Strand the motif hit was on (+/-)
+   - The motif_id matches the 2nd column of the distance table for a given TF.
+
 5. plots
    - *single_position_*BaseDistribution as previously described shows the position specific mononucleotide base distributions from both experimental and simulated data. Both are plotted as a qc metric and should be roughly identical, with a sharp increase in GC composition around position 0.
    - sample_probability_givenX_*BaseDistribution shows plots related to the position specific conditional probabilities for A/T/C/G.
+
 6. scores
    - simulated_traditional_md_score.txt
    - experimental_traditional_md_score.txt
+
 7. temp - contains intermediate files. It is recommended to remove temp right away.
 
 ## Contact Information ##
