@@ -263,8 +263,8 @@ Example motif bed file:
 | chr1 | 43588 | 43607     | 13.1818             | +            | chr1;motif_4 |
 
    - The chr/start/stop are genomic locations for motif hits in the genome.
-   - Score is the score attributed to how well the motif matches that genomic location assigned by fimo.
-   - Strand the motif hit was on (+/-)
+   - Score is the score attributed to how well the motif matches that genomic location assigned by the fimo scan.
+   - Strand the motif hit was on (+/-).
    - The motif_id matches the 2nd column of the distance table for a given TF.
 
 5. plots
