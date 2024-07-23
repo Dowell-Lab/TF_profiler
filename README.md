@@ -270,6 +270,7 @@ Example motif bed file:
 5. plots
    - *single_position_*BaseDistribution as previously described shows the position specific mononucleotide base distributions from both experimental and simulated data. Both are plotted as a qc metric and should be roughly identical, with a sharp increase in GC composition around position 0.
    - sample_probability_givenX_*BaseDistribution shows plots related to the position specific conditional probabilities for A/T/C/G.
+   - 
 
 6. scores
    - simulated_traditional_md_score.txt
