@@ -41,11 +41,13 @@ def import_md_scores(outdir,sample,motifs,traditional_md,seq_type):
         sim_md_score_df = pd.read_csv(outdir+'/scores/mononucleotide_simulated_traditional_md_score.txt', sep='\t')
     
     md_score_df = exp_md_score_df.merge(sim_md_score_df, on='tf', suffixes=('_exp', '_sim'))
-    
+
+    full_path = os.path.abspath(__file__)
+    parent_path = os.path.dirname(full_path)    
     meme_name=str(motifs)
     meme_name = meme_name.split('/')[-1]
     meme_name = meme_name.replace('.meme', '')
-    gc = pd.read_csv('~/rbg/assets/'+ meme_name +'_motif_gc_percentage.txt', sep='\t', 
+    gc = pd.read_csv(parent_path + '/assets/'+ meme_name +'_motif_gc_percentage.txt', sep='\t', 
                     names=['tf','percent_gc','length'])
     
     md_score_df=md_score_df.merge(gc, on = 'tf')

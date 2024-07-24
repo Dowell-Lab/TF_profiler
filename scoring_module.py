@@ -69,9 +69,9 @@ def get_sequence_numbers(outdir, sample, annotation):
         sequence_num = len(an.readlines())
         
     directory = os.path.abspath(__file__)
-    directory = directory.str.replace('scoring_module.py','')
+    directory = os.path.dirname(directory)
                                                                           
-    assetbed = os.path.join(directory, 'assets/hg38_refseq_merge_1000bp_TSSs.bed') #mm10_refseq_unique_TSSs_1000bp_merge.sorted.bed
+    assetbed = os.path.join(directory, '/assets/hg38_refseq_merge_1000bp_TSSs.bed') #mm10_refseq_unique_TSSs_1000bp_merge.sorted.bed
 
     os.system('bedtools intersect -wa -u -a '+ annotation + 
          ' -b ' + assetbed + ' > ' +
