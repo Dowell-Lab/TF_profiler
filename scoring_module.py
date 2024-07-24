@@ -71,7 +71,7 @@ def get_sequence_numbers(outdir, sample, annotation):
     directory = os.path.abspath(__file__)
     directory = os.path.dirname(directory)
                                                                           
-    assetbed = os.path.join(directory, '/assets/hg38_refseq_merge_1000bp_TSSs.bed') #mm10_refseq_unique_TSSs_1000bp_merge.sorted.bed
+    assetbed = directory + '/assets/hg38_refseq_merge_1000bp_TSSs.bed' #mm10_refseq_unique_TSSs_1000bp_merge.sorted.bed
 
     os.system('bedtools intersect -wa -u -a '+ annotation + 
          ' -b ' + assetbed + ' > ' +
