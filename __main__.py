@@ -41,6 +41,7 @@ if __name__ == "__main__":
     general.add_argument('-v', '--verbose',dest="verbose", type=str2bool, nargs='?', const=True, default=False, help = 'will generate verbose output file', metavar="True/False", required=False)
  
     general.add_argument('-a', '--annotation', dest="annotation", help = 'input bed file of bidirectionals or ATAC peaks, ends with .bed or .sorted.bed', metavar="annotation.bed", required=True)
+    general.add_argument('-j', '--tss_promoter', dest="tss_bed", help = 'input bed file of gene TSS regions plus 1000bp upstream, ends with .bed or .sorted.bed', metavar="tss.bed", required=True)
     general.add_argument('-o', '--outdir', dest="outdir", help = 'directory for output', metavar="/full/path/to/output", required=True)
     general.add_argument('-s', '--sample', dest="sample", help = 'name of the sample to be run (str)', metavar="name_of_sample", required=True)
     general.add_argument('-c', '--cpus', type=int, dest='cpus', metavar='int', help='number of CPUs for multiprocessing. Default=1', default=1, required=False)
@@ -76,7 +77,7 @@ if __name__ == "__main__":
 
     args = p.parse_args()
 
-main.run(args.verbose, args.outdir, args.sample, args.genome, args.annotation, 
+main.run(args.verbose, args.outdir, args.sample, args.genome, args.annotation, args.tss_bed,
         args.sequence_num, args.chrom_num, args.motifs, args.background_file, args.seed, args.cpus, args.window,
         args.mononucleotide_generation, args.dinucleotide_generation, args.simulated_pre_scan,
         args.experimental_fimo, args.pre_scan, args.continue_run,

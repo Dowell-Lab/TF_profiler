@@ -13,7 +13,7 @@ from scoring_module import run_scoring_module
 from statistics_module import run_statistics_module
 
 ######################################### Run Main #########################################
-def run(verbose, outdir, sample, genome, annotation, 
+def run(verbose, outdir, sample, genome, annotation, tss_bed,
         sequence_num, chrom_num, motifs, background_file, seed, cpus=1, window=1500,
         mononucleotide_generation=False, dinucleotide_generation=True, simulated_pre_scan=None,
         experimental_fimo=False, pre_scan=None, continue_run=False,
@@ -154,7 +154,7 @@ def run(verbose, outdir, sample, genome, annotation,
             print('Calling distances from ' + outdir + '/distances/simulated/')
         run_scoring_module(verbose=verbose, outdir=outdir,sample=sample, window=window,cpus=cpus,
                            seq_type='simulated', 
-                           simulated_pre_scan=simulated_pre_scan, annotation=annotation)
+                           simulated_pre_scan=simulated_pre_scan, annotation=annotation, tss_bed=tss_bed)
     ### Mononucleotide Distances ###
     if simulated_pre_scan is not None:
         print('Simulated MD Score Calculation is complete.')
@@ -163,7 +163,7 @@ def run(verbose, outdir, sample, genome, annotation,
             print('--------------Mononucleotide MD Score--------------') 
         run_scoring_module(verbose=verbose, outdir=outdir,sample=sample, window=window, cpus=cpus,
                            seq_type='mononucleotide_simulated', 
-                           simulated_pre_scan=simulated_pre_scan, annotation=annotation) 
+                           simulated_pre_scan=simulated_pre_scan, annotation=annotation, tss_bed=tss_bed) 
     ### Experimental Score ### 
     ### Calls experimental distances that are calculated from prescan in outdir + '/distances/experimental/' ###
     ### Otherwise the distances in outdir + '/distances/experimental/' are from the newly scanned experimental sequences ###     
@@ -173,7 +173,7 @@ def run(verbose, outdir, sample, genome, annotation,
             print('Calling distances from ' + outdir + '/distances/experimental/')
         run_scoring_module(verbose=verbose, outdir=outdir, sample=sample, window=window, cpus=cpus,
                            seq_type='experimental', 
-                           simulated_pre_scan=simulated_pre_scan, annotation=annotation)
+                           simulated_pre_scan=simulated_pre_scan, annotation=annotation, tss_bed=tss_bed)
     if verbose == True:
         print('--------------Motif Displacement Scoring Complete--------------')
         print('Stop time: %s' % str(datetime.datetime.now())) 

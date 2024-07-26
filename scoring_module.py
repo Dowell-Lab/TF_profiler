@@ -9,12 +9,12 @@ import multiprocessing
 from functools import partial
 
 ######################################### MD Score Main #########################################
-def run_scoring_module(verbose, outdir, sample, window, cpus, seq_type, simulated_pre_scan, annotation):
+def run_scoring_module(verbose, outdir, sample, window, cpus, seq_type, simulated_pre_scan, annotation, tss_bed):
     if verbose==True:
         print('--------------Pulling in Annotation and Getting List of Motifs---------------')
     scoring_dirs(verbose=verbose, outdir=outdir, seq_type=seq_type)
     tf_list = get_distance_tfs(verbose=verbose, outdir=outdir, sample=sample, seq_type=seq_type, simulated_pre_scan=simulated_pre_scan)
-    sequence_num, promoter_num = get_sequence_numbers(outdir=outdir, sample=sample, annotation=annotation)
+    sequence_num, promoter_num = get_sequence_numbers(outdir=outdir, sample=sample, annotation=annotation, tss_bed=tss_bed)
 
     if verbose == True: 
         print('--------------Beginning Traditional MD Score Calculation---------------')
@@ -64,14 +64,14 @@ def get_distance_tfs(verbose, outdir, sample, seq_type, simulated_pre_scan):
         print('There are ' + str(len(tf_list)) + " motifs with hits in this dataset.")
     return tf_list
 
-def get_sequence_numbers(outdir, sample, annotation):
+def get_sequence_numbers(outdir, sample, annotation, tss_bed):
     with open(annotation, 'r') as an:
         sequence_num = len(an.readlines())
         
     directory = os.path.abspath(__file__)
     directory = os.path.dirname(directory)
                                                                           
-    assetbed = directory + '/assets/hg38_refseq_merge_1000bp_TSSs.bed' #mm10_refseq_unique_TSSs_1000bp_merge.sorted.bed
+    assetbed = tss_bed #directory + '/assets/hg38_refseq_merge_1000bp_TSSs.bed' #mm10_refseq_unique_TSSs_1000bp_merge.sorted.bed
 
     os.system('bedtools intersect -wa -u -a '+ annotation + 
          ' -b ' + assetbed + ' > ' +
