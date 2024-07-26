@@ -19,6 +19,7 @@ module load meme/5.0.3
 
 BIN=/Users/tajo5912/rbg/gitTEST/TF_profiler
 GENOME=/scratch/Shares/dowell/genomes/hg38/hg38.fa
+TSS=/path/to/assets/hg38_refseq_merge_1000bp_TSSs.bed
 
 OUTDIR=/scratch/Users/tajo5912/test
 
@@ -32,6 +33,7 @@ python ${BIN} \
 -m ${BIN}/test/p53_estrogen_IFN_mini.meme \
 -b ${BIN}/assets/enhancer_background_flat \
 -o ${OUTDIR} \
+-j ${TSS} \
 -s test_sim \
 -v \
 -c 1 \

@@ -101,6 +101,7 @@ A run command may look something like this:
 python /path/to/TF_Profiler \
 -g hg38.fa \
 -a bidirectional_annotation.bed \
+-j tss_promoter.bed \
 -o /path/to/output \
 -s meaningful_name \
 -v \
@@ -145,13 +146,15 @@ Lastly, run_rbg_hoco_example.sbatch is an example sbatch script for submission o
 
 ## Help Message ##
 ```
-[-h] [-v [True/False]] -a annotation.bed -o /full/path/to/output -s
-         name_of_sample [-c int] [-r [True/False]] [-l [True/False]]
-         [-d [True/False]] -g genome.fa [-e int] [-w int] [-n int] [-i int]
-         [-q /full/path/to/pre-scanned/motifs] [-x [True/False]]
-         [-k /full/path/to/pre-calc/distances] -m motif_database.meme
-         [-t float] [-b background.csv] [-u [True/False]] [-p float]
-         [-y [significance/all/<tf_name>/none]]
+usage: TF_profiler [-h] [-v [True/False]] -a annotation.bed -j tss.bed -o
+                   /full/path/to/output -s name_of_sample [-c int]
+                   [-r [True/False]] [-l [True/False]] [-d [True/False]] -g
+                   genome.fa [-e int] [-w int] [-n int] [-i int]
+                   [-q /full/path/to/pre-scanned/motifs] [-x [True/False]]
+                   [-k /full/path/to/pre-calc/distances] -m
+                   motif_database.meme [-t float] [-b background.csv]
+                   [-u [True/False]] [-p float]
+                   [-y [significance/all/<tf_name>/none]]
 
 This work flow functions to assess active transcription factors in a ATAC-seq or PRO-seq data set. First, it calculates base content per position over a 3000bp window (given by a bed file). Subsequently, it generates sequences using a first or second order MM to obtain a simulated background sequence. Next, it can run FIMO to generate motif calls within the generated sequence (and the original sequence provided) or take a set of pre-scanned sequences. Next, it generates an MD score file for both the original sequence and the simulated sequence. Lastly, it outputs a text file with TF activation information along with various plots displaying this information.
 
@@ -163,6 +166,8 @@ General Arguments:
                         will generate verbose output file
   -a annotation.bed, --annotation annotation.bed
                         input bed file of bidirectionals or ATAC peaks, ends with .bed or .sorted.bed
+  -j tss.bed, --tss_promoter tss.bed
+                        input bed file of gene TSS regions plus 1000bp upstream, ends with .bed or .sorted.bed
   -o /full/path/to/output, --outdir /full/path/to/output
                         directory for output
   -s name_of_sample, --sample name_of_sample
