@@ -55,6 +55,8 @@ six==1.16.0
 threadpoolctl==3.1.0
 ```
 
+> Note: If you do not have an up-to-date version of pip, you will need to update it. `pip install --upgrade pip`
+
 Additional dependencies:
 If you are on the FIJI compute cluster you may load the following modules:
 ```
